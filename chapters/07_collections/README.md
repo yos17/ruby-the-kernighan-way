@@ -287,3 +287,224 @@ end
 | `Enumerator.new` | build a custom sequence with a block |
 | `to_enum` | return an enumerator when no block given (Ruby convention) |
 | `Set` | unique collection, fast `include?` |
+
+---
+
+## Solutions
+
+### Exercise 1
+
+```ruby
+# Matrix as a 2D array wrapper with +, *, and transpose
+
+class Matrix
+  def initialize(rows)
+    @rows = rows.map { |r| r.dup }
+  end
+
+  def [](i, j)
+    @rows[i][j]
+  end
+
+  def rows
+    @rows.length
+  end
+
+  def cols
+    @rows[0].length
+  end
+
+  def +(other)
+    raise "Incompatible dimensions" unless rows == other.rows && cols == other.cols
+    result = Array.new(rows) { |i| Array.new(cols) { |j| @rows[i][j] + other[i, j] } }
+    Matrix.new(result)
+  end
+
+  def *(other)
+    raise "Incompatible dimensions" unless cols == other.rows
+    result = Array.new(rows) do |i|
+      Array.new(other.cols) do |j|
+        (0...cols).sum { |k| @rows[i][k] * other[k, j] }
+      end
+    end
+    Matrix.new(result)
+  end
+
+  def transpose
+    result = Array.new(cols) { |j| Array.new(rows) { |i| @rows[i][j] } }
+    Matrix.new(result)
+  end
+
+  def to_s
+    @rows.map { |row| row.inspect }.join("\n")
+  end
+
+  def ==(other)
+    @rows == other.instance_variable_get(:@rows)
+  end
+end
+
+# Usage:
+m1 = Matrix.new([[1, 2], [3, 4]])
+m2 = Matrix.new([[5, 6], [7, 8]])
+
+puts m1 + m2
+# [6, 8]
+# [10, 12]
+
+puts m1 * m2
+# [19, 22]
+# [43, 50]
+
+puts m1.transpose
+# [1, 3]
+# [2, 4]
+```
+
+### Exercise 2
+
+```ruby
+# histogram — bucket numbers and print a bar chart
+# Usage: histogram([2, 5, 7, 1, 9, 3, 6, 4, 8, 2], buckets: 5)
+
+def histogram(numbers, buckets: 10, width: 40)
+  return puts "No data" if numbers.empty?
+
+  min    = numbers.min
+  max    = numbers.max
+  range  = (max - min).to_f
+  range  = 1.0 if range == 0   # avoid division by zero
+
+  bucket_size = range / buckets
+
+  # Group numbers into buckets
+  counts = Array.new(buckets, 0)
+  numbers.each do |n|
+    idx = [(( n - min) / bucket_size).floor, buckets - 1].min
+    counts[idx] += 1
+  end
+
+  max_count = counts.max.to_f
+  bar_width = width
+
+  puts "Histogram (#{numbers.length} values, #{buckets} buckets):"
+  puts "-" * (bar_width + 20)
+
+  counts.each_with_index do |count, i|
+    lower = (min + i * bucket_size).round(2)
+    upper = (min + (i + 1) * bucket_size).round(2)
+    bar   = "█" * (count * bar_width / max_count).round
+    label = "[#{lower.to_s.rjust(6)}, #{upper.to_s.rjust(6)})"
+    puts "#{label} #{bar} #{count}"
+  end
+end
+
+# Usage:
+data = Array.new(100) { rand(1..100) }
+histogram(data, buckets: 10)
+
+histogram([1, 1, 2, 3, 3, 3, 4, 4, 5], buckets: 5)
+# Histogram (9 values, 5 buckets):
+# [   1.0,    1.8) ██████████████████████ 2
+# [   1.8,    2.6) ███████████ 1
+# [   2.6,    3.4) ████████████████████████████████ 3
+# [   3.4,    4.2) ██████████████████████ 2
+# [   4.2,    5.0) ███████████ 1
+```
+
+### Exercise 3
+
+```ruby
+# deep_flatten — without using .flatten
+
+def deep_flatten(arr)
+  arr.each_with_object([]) do |element, result|
+    if element.is_a?(Array)
+      result.concat(deep_flatten(element))   # recurse
+    else
+      result << element
+    end
+  end
+end
+
+# Tests:
+deep_flatten([1, [2, 3], [4, [5, [6, 7]]]])
+# => [1, 2, 3, 4, 5, 6, 7]
+
+deep_flatten([[[[1]]], [2, [3, [4]]]])
+# => [1, 2, 3, 4]
+
+deep_flatten([1, 2, 3])
+# => [1, 2, 3]
+
+# Alternative using Enumerator:
+def deep_flatten_enum(arr)
+  Enumerator.new do |y|
+    arr.each do |el|
+      if el.is_a?(Array)
+        deep_flatten_enum(el).each { |x| y << x }
+      else
+        y << el
+      end
+    end
+  end.to_a
+end
+```
+
+### Exercise 4
+
+```ruby
+# Priority queue — array sorted by priority (lower number = higher priority)
+
+class PriorityQueue
+  Item = Struct.new(:priority, :value)
+
+  def initialize
+    @items = []
+  end
+
+  # Insert with priority (lower number = higher priority)
+  def enqueue(value, priority:)
+    @items << Item.new(priority, value)
+    @items.sort_by!(&:priority)   # keep sorted
+    self
+  end
+
+  # Remove and return highest-priority item (lowest priority number)
+  def dequeue
+    raise "Queue is empty" if empty?
+    @items.shift.value
+  end
+
+  def peek
+    raise "Queue is empty" if empty?
+    @items.first.value
+  end
+
+  def size
+    @items.size
+  end
+
+  def empty?
+    @items.empty?
+  end
+
+  def to_s
+    @items.map { |i| "#{i.priority}:#{i.value}" }.join(", ")
+  end
+end
+
+# Usage:
+pq = PriorityQueue.new
+pq.enqueue("low priority task",    priority: 10)
+pq.enqueue("urgent task",          priority: 1)
+pq.enqueue("medium priority task", priority: 5)
+pq.enqueue("critical task",        priority: 0)
+
+puts pq          # => 0:critical task, 1:urgent task, 5:medium priority task, 10:low priority task
+
+pq.dequeue       # => "critical task"
+pq.dequeue       # => "urgent task"
+pq.peek          # => "medium priority task"
+puts pq.size     # => 2
+```

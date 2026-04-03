@@ -368,3 +368,237 @@ puts TextProcessor.plugins  # => [:word_count, :char_count, :uppercase, :reverse
 | `Enumerable` | define `each`, get 50+ collection methods free |
 | Namespace | `module Foo; class Bar; end; end` → `Foo::Bar` |
 | Mixin | reusable behavior injected into any class |
+
+---
+
+## Solutions
+
+### Exercise 1
+
+```ruby
+# Cacheable module — memoization for any method via a class macro
+
+module Cacheable
+  def self.included(base)
+    base.extend(ClassMethods)
+  end
+
+  module ClassMethods
+    def cache_method(*method_names)
+      method_names.each do |name|
+        original = instance_method(name)
+
+        define_method(name) do |*args|
+          @_cache       ||= {}
+          @_cache[name] ||= {}
+          key = args
+
+          unless @_cache[name].key?(key)
+            @_cache[name][key] = original.bind(self).call(*args)
+          end
+          @_cache[name][key]
+        end
+      end
+    end
+  end
+
+  def clear_cache(method_name = nil)
+    @_cache ||= {}
+    method_name ? @_cache.delete(method_name) : @_cache.clear
+  end
+end
+
+# Usage:
+class Calculator
+  include Cacheable
+
+  def expensive_fib(n)
+    puts "Computing fib(#{n})..."   # shows when actually computed
+    return n if n <= 1
+    expensive_fib(n - 1) + expensive_fib(n - 2)
+  end
+
+  cache_method :expensive_fib
+end
+
+calc = Calculator.new
+calc.expensive_fib(5)   # computes: fib(0)..fib(5)
+calc.expensive_fib(5)   # => from cache, no output
+calc.expensive_fib(3)   # => from cache, no output
+```
+
+### Exercise 2
+
+```ruby
+# Validatable module — validates :field, presence: true, format: /regex/
+
+module Validatable
+  def self.included(base)
+    base.extend(ClassMethods)
+    base.instance_variable_set(:@validations, {})
+  end
+
+  module ClassMethods
+    def validates(field, **rules)
+      @validations        ||= {}
+      @validations[field] ||= []
+      @validations[field] << rules
+    end
+
+    def validations
+      @validations
+    end
+  end
+
+  def valid?
+    @errors = []
+    self.class.validations.each do |field, rules_list|
+      value = send(field) rescue nil
+      rules_list.each do |rules|
+        if rules[:presence] && (value.nil? || value.to_s.strip.empty?)
+          @errors << "#{field} can't be blank"
+        end
+        if rules[:format] && !value.nil? && !value.match?(rules[:format])
+          @errors << "#{field} is invalid"
+        end
+        if rules[:length] && !value.nil?
+          range = rules[:length]
+          @errors << "#{field} is too short (min #{range.min})" if range.is_a?(Range) && value.length < range.min
+          @errors << "#{field} is too long (max #{range.max})"  if range.is_a?(Range) && value.length > range.max
+        end
+        if rules[:numericality] && !value.nil?
+          @errors << "#{field} must be a number" unless value.is_a?(Numeric)
+        end
+      end
+    end
+    @errors.empty?
+  end
+
+  def errors
+    @errors || []
+  end
+end
+
+# Usage:
+class User
+  include Validatable
+
+  attr_accessor :name, :email, :age
+
+  validates :name,  presence: true, length: (2..50)
+  validates :email, presence: true, format: /\A[\w+\-.]+@[a-z\d\-.]+\.[a-z]+\z/i
+  validates :age,   numericality: true
+
+  def initialize(name:, email:, age:)
+    @name, @email, @age = name, email, age
+  end
+end
+
+u = User.new(name: "Yosia", email: "yosia@example.com", age: 30)
+u.valid?    # => true
+u.errors    # => []
+
+bad = User.new(name: "", email: "not-an-email", age: "old")
+bad.valid?  # => false
+bad.errors  # => ["name can't be blank", "email is invalid", "age must be a number"]
+```
+
+### Exercise 3
+
+```ruby
+# Timestampable module — auto-sets created_at/updated_at on save
+
+module Timestampable
+  def self.included(base)
+    base.class_eval do
+      attr_reader :created_at, :updated_at
+    end
+  end
+
+  def save
+    now = Time.now
+    @created_at ||= now   # only set on first save
+    @updated_at   = now
+    super rescue nil       # call super if the class defines save; ignore if not
+    self
+  end
+
+  def touch
+    @updated_at = Time.now
+    self
+  end
+end
+
+# Usage:
+class Article
+  include Timestampable
+
+  attr_accessor :title, :content
+
+  def initialize(title, content)
+    @title   = title
+    @content = content
+  end
+end
+
+article = Article.new("Ruby Mixins", "Modules are powerful...")
+article.created_at   # => nil (not saved yet)
+
+article.save
+article.created_at   # => 2026-04-03 10:08:00 +0200
+article.updated_at   # => 2026-04-03 10:08:00 +0200
+
+sleep 0.01
+article.touch
+# article.updated_at > article.created_at  # => true
+```
+
+### Exercise 4
+
+```ruby
+# Describable module — adds .description class method for documentation
+
+module Describable
+  def self.included(base)
+    base.extend(ClassMethods)
+  end
+
+  module ClassMethods
+    def description(text = nil)
+      if text
+        @description = text
+      else
+        @description || "No description provided for #{name}"
+      end
+    end
+
+    def describe
+      lines = ["#{name}: #{description}"]
+      public_instance_methods(false).sort.each do |m|
+        lines << "  ##{m}"
+      end
+      lines.join("\n")
+    end
+  end
+end
+
+# Usage:
+class PaymentProcessor
+  include Describable
+
+  description "Handles payment processing for orders"
+
+  def process(amount) = "Processing $#{amount}"
+  def refund(amount)  = "Refunding $#{amount}"
+  def void            = "Voiding transaction"
+end
+
+puts PaymentProcessor.description
+# => "Handles payment processing for orders"
+
+puts PaymentProcessor.describe
+# PaymentProcessor: Handles payment processing for orders
+#   #process
+#   #refund
+#   #void
+```

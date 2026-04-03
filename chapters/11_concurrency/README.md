@@ -182,3 +182,255 @@ Fibers are the foundation of Ruby's `async`/`await`-style patterns.
 | GIL | threads help with I/O, not CPU |
 | `Ractor` | true parallelism (Ruby 3+), no shared state |
 | `Fiber` | cooperative concurrency, you control switching |
+
+---
+
+## Solutions
+
+### Exercise 1
+
+```ruby
+# concurrent_grep.rb — search multiple files in parallel using threads
+# Usage: ruby concurrent_grep.rb pattern file1 file2 ...
+
+if ARGV.length < 2
+  puts "Usage: concurrent_grep.rb pattern file1 file2 ..."
+  exit 1
+end
+
+pattern = Regexp.new(ARGV[0])
+files   = ARGV[1..]
+
+# Thread-safe way to collect results
+results = []
+mutex   = Mutex.new
+
+threads = files.map do |file|
+  Thread.new do
+    unless File.exist?(file)
+      mutex.synchronize { results << { file: file, error: "not found" } }
+      next
+    end
+
+    matches = []
+    File.foreach(file).with_index(1) do |line, num|
+      matches << { line: num, text: line.chomp } if line.match?(pattern)
+    end
+
+    mutex.synchronize { results << { file: file, matches: matches } }
+  rescue => e
+    mutex.synchronize { results << { file: file, error: e.message } }
+  end
+end
+
+threads.each(&:join)
+
+# Print results sorted by filename
+results.sort_by { |r| r[:file] }.each do |result|
+  if result[:error]
+    puts "#{result[:file]}: ERROR: #{result[:error]}"
+  elsif result[:matches].empty?
+    # skip files with no matches
+  else
+    result[:matches].each do |m|
+      puts "#{result[:file]}:#{m[:line]}: #{m[:text]}"
+    end
+  end
+end
+
+total = results.sum { |r| r[:matches]&.length || 0 }
+puts "\n#{total} match(es) in #{files.length} file(s)"
+```
+
+### Exercise 2
+
+```ruby
+# thread_pool.rb — N worker threads processing a queue of jobs
+
+require 'thread'
+
+class ThreadPool
+  def initialize(size)
+    @size    = size
+    @queue   = Queue.new
+    @results = Queue.new
+    @workers = []
+    start_workers
+  end
+
+  def submit(job = nil, &block)
+    work = job || block
+    raise ArgumentError, "No job given" unless work
+    @queue << work
+  end
+
+  # Submit a job and track it with a future-like object
+  def submit_with_result(&block)
+    result_slot = Queue.new
+    @queue << -> { result_slot << block.call }
+    result_slot
+  end
+
+  def shutdown
+    @size.times { @queue << :stop }
+    @workers.each(&:join)
+  end
+
+  def process_all(jobs)
+    jobs.each { |job| submit { job } }
+    # Not a real future — for demo purposes, just drain
+  end
+
+  private
+
+  def start_workers
+    @size.times do
+      @workers << Thread.new do
+        loop do
+          job = @queue.pop
+          break if job == :stop
+          begin
+            job.call
+          rescue => e
+            puts "Worker error: #{e.message}"
+          end
+        end
+      end
+    end
+  end
+end
+
+# Usage:
+pool = ThreadPool.new(4)
+mutex = Mutex.new
+results = []
+
+20.times do |i|
+  pool.submit do
+    sleep(rand(0.01..0.1))   # simulate work
+    mutex.synchronize { results << i * i }
+  end
+end
+
+pool.shutdown
+puts results.sort.inspect
+# => [0, 1, 4, 9, 16, 25, 36, 49, 64, 81, 100, 121, 144, 169, 196, 225, 256, 289, 324, 361]
+```
+
+### Exercise 3
+
+```ruby
+# rate_limiter.rb — allow at most N calls per second using Mutex
+
+class RateLimiter
+  def initialize(max_calls:, per_seconds: 1.0)
+    @max_calls   = max_calls
+    @per_seconds = per_seconds
+    @calls       = []
+    @mutex       = Mutex.new
+  end
+
+  # Returns true if allowed, false if rate limit exceeded
+  def allow?
+    @mutex.synchronize do
+      now = Time.now.to_f
+      # Remove calls outside the window
+      @calls.reject! { |t| t < now - @per_seconds }
+      if @calls.length < @max_calls
+        @calls << now
+        true
+      else
+        false
+      end
+    end
+  end
+
+  # Block until allowed, then execute
+  def throttle(&block)
+    loop do
+      if allow?
+        return block.call
+      else
+        sleep(0.01)   # wait 10ms before retrying
+      end
+    end
+  end
+end
+
+# Usage:
+limiter = RateLimiter.new(max_calls: 5, per_seconds: 1.0)
+
+# Test: try to make 10 calls quickly — only 5 should go through per second
+threads = 10.times.map do |i|
+  Thread.new do
+    if limiter.allow?
+      puts "Call #{i}: ALLOWED at #{Time.now.strftime('%H:%M:%S.%3N')}"
+    else
+      puts "Call #{i}: RATE LIMITED"
+    end
+  end
+end
+
+threads.each(&:join)
+# First 5 calls: ALLOWED
+# Last 5 calls: RATE LIMITED
+```
+
+### Exercise 4
+
+```ruby
+# producer_consumer_fiber.rb — producer-consumer pipeline using fibers
+
+# Producer fiber: generates values
+producer = Fiber.new do
+  puts "Producer: starting"
+  10.times do |i|
+    item = "item_#{i}"
+    puts "Producer: made #{item}"
+    Fiber.yield item   # hand item to consumer
+  end
+  nil   # signal end
+end
+
+# Consumer fiber: processes values from producer
+consumer = Fiber.new do |first_item|
+  item = first_item
+  loop do
+    break if item.nil?
+    puts "Consumer: processing #{item}"
+    result = item.upcase
+    puts "Consumer: done with #{result}"
+    item = Fiber.yield result   # ask for next item
+  end
+  puts "Consumer: finished"
+end
+
+# Pipeline: drive the producer-consumer loop
+results = []
+item = producer.resume   # start producer, get first item
+
+while item
+  result = consumer.resume(item)   # send to consumer, get processed result
+  results << result if result
+  item = producer.resume           # get next item from producer
+end
+
+consumer.resume(nil)   # signal consumer to stop
+
+puts "\nResults: #{results.inspect}"
+# Results: ["ITEM_0", "ITEM_1", "ITEM_2", ...]
+
+# --- A more elegant pipeline version using lazy enumerators ---
+producer_enum = Enumerator.new do |y|
+  10.times { |i| y << "item_#{i}" }
+end
+
+results = producer_enum
+  .lazy
+  .map(&:upcase)          # "consumer" transform step 1
+  .select { |s| s =~ /[02468]/ }  # filter: only even-numbered items
+  .first(3)               # take just 3
+
+puts results.inspect
+# => ["ITEM_0", "ITEM_2", "ITEM_4"]
+```

@@ -268,3 +268,247 @@ end
 | `Dir["**/*.rb"]` | recursive glob |
 | `Pathname` | OO file path manipulation |
 | `StringIO` | in-memory IO — same interface as a file |
+
+---
+
+## Solutions
+
+### Exercise 1
+
+```ruby
+# find_duplicates.rb — find duplicate files by content hash
+# Usage: ruby find_duplicates.rb [directory]
+
+require 'digest'
+require 'find'
+
+dir = ARGV[0] || "."
+
+unless File.directory?(dir)
+  puts "Not a directory: #{dir}"
+  exit 1
+end
+
+# Group files by their MD5 hash
+file_hashes = Hash.new { |h, k| h[k] = [] }
+
+Find.find(dir) do |path|
+  next unless File.file?(path)
+  next if File.size(path) == 0   # skip empty files
+
+  hash = Digest::MD5.hexdigest(File.binread(path))
+  file_hashes[hash] << path
+end
+
+# Report duplicates
+duplicates = file_hashes.select { |_, paths| paths.length > 1 }
+
+if duplicates.empty?
+  puts "No duplicate files found in #{dir}"
+else
+  puts "Found #{duplicates.length} groups of duplicate files:\n"
+  duplicates.each do |hash, paths|
+    size = File.size(paths.first)
+    puts "Hash: #{hash[0, 8]}...  Size: #{size} bytes"
+    paths.each { |p| puts "  #{p}" }
+    puts
+  end
+  total_wasted = duplicates.sum { |_, paths| File.size(paths.first) * (paths.length - 1) }
+  puts "Total wasted space: #{total_wasted} bytes"
+end
+```
+
+### Exercise 2
+
+```ruby
+# watch.rb — monitor a file for new lines (like tail -f)
+# Usage: ruby watch.rb logfile.txt
+
+file = ARGV[0]
+
+unless file && File.exist?(file)
+  puts "Usage: watch.rb <file>"
+  exit 1
+end
+
+puts "Watching #{file} for changes (Ctrl+C to stop)..."
+puts "-" * 50
+
+# Start reading from the end of the file
+pos = File.size(file)
+
+begin
+  loop do
+    File.open(file) do |f|
+      f.seek(pos)
+      while (line = f.gets)
+        print line
+        pos = f.pos
+      end
+    end
+    sleep 0.5   # check every half second
+  end
+rescue Interrupt
+  puts "\nStopped watching."
+end
+
+# To test: run in one terminal, then in another:
+#   echo "new log line" >> logfile.txt
+```
+
+### Exercise 3
+
+```ruby
+# kvstore.rb — simple key-value store backed by a JSON file
+
+require 'json'
+require 'fileutils'
+
+class KVStore
+  def initialize(path)
+    @path = path
+    @data = load
+  end
+
+  def set(key, value)
+    @data[key.to_s] = value
+    persist
+    value
+  end
+
+  def get(key)
+    @data[key.to_s]
+  end
+
+  def delete(key)
+    value = @data.delete(key.to_s)
+    persist
+    value
+  end
+
+  def all
+    @data.dup
+  end
+
+  def keys
+    @data.keys
+  end
+
+  def exists?(key)
+    @data.key?(key.to_s)
+  end
+
+  def clear
+    @data.clear
+    persist
+    self
+  end
+
+  def size
+    @data.size
+  end
+
+  def to_s
+    "KVStore(#{@path}, #{@data.size} keys)"
+  end
+
+  private
+
+  def load
+    return {} unless File.exist?(@path)
+    JSON.parse(File.read(@path))
+  rescue JSON::ParserError
+    {}
+  end
+
+  def persist
+    FileUtils.mkdir_p(File.dirname(@path))
+    File.write(@path, JSON.pretty_generate(@data))
+  end
+end
+
+# Usage:
+store = KVStore.new("/tmp/mystore.json")
+store.set("user:1:name", "Yosia")
+store.set("user:1:age", 30)
+store.set("app:version", "1.0.0")
+
+store.get("user:1:name")     # => "Yosia"
+store.get("user:1:age")      # => 30
+store.exists?("app:version") # => true
+store.delete("user:1:age")
+puts store.all.inspect
+# => {"user:1:name"=>"Yosia", "app:version"=>"1.0.0"}
+```
+
+### Exercise 4
+
+```ruby
+# tree.rb — print a directory tree like the Unix `tree` command
+# Usage: ruby tree.rb [directory] [--depth N]
+
+require 'optparse'
+
+options = { depth: Float::INFINITY, show_hidden: false }
+OptionParser.new do |opts|
+  opts.banner = "Usage: tree.rb [directory] [options]"
+  opts.on("--depth N", Integer, "Max depth") { |n| options[:depth] = n }
+  opts.on("--hidden",  "Show hidden files")  { options[:show_hidden] = true }
+end.parse!
+
+root = ARGV[0] || "."
+
+unless File.directory?(root)
+  puts "Not a directory: #{root}"
+  exit 1
+end
+
+file_count = 0
+dir_count  = 0
+
+def print_tree(path, prefix: "", depth: Float::INFINITY, current_depth: 0,
+               show_hidden: false, counts: { files: 0, dirs: 0 })
+  return if current_depth > depth
+
+  entries = Dir.children(path).sort
+  entries.reject! { |e| e.start_with?(".") } unless show_hidden
+
+  entries.each_with_index do |entry, i|
+    full_path  = File.join(path, entry)
+    is_last    = i == entries.length - 1
+    connector  = is_last ? "└── " : "├── "
+    extension  = is_last ? "    " : "│   "
+
+    if File.directory?(full_path)
+      counts[:dirs] += 1
+      puts "#{prefix}#{connector}#{entry}/"
+      print_tree(full_path,
+                 prefix:        "#{prefix}#{extension}",
+                 depth:         depth,
+                 current_depth: current_depth + 1,
+                 show_hidden:   show_hidden,
+                 counts:        counts)
+    else
+      counts[:files] += 1
+      size = File.size(full_path)
+      puts "#{prefix}#{connector}#{entry}"
+    end
+  end
+end
+
+puts "#{root}"
+counts = { files: 0, dirs: 0 }
+print_tree(root, depth: options[:depth], show_hidden: options[:show_hidden], counts: counts)
+puts "\n#{counts[:dirs]} directories, #{counts[:files]} files"
+
+# ruby tree.rb ~/Projects/my-app --depth 2
+# /Users/yosia/Projects/my-app
+# ├── Gemfile
+# ├── README.md
+# ├── lib/
+# │   └── my_app.rb
+# └── spec/
+#     └── my_app_spec.rb
+#
+# 2 directories, 4 files
+```

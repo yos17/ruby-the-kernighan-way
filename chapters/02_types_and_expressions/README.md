@@ -347,3 +347,130 @@ Notice the `CONVERSIONS` hash maps `[from, to]` arrays to **lambda** functions. 
 | Hash | key-value map, symbol keys preferred |
 | Range | `1..10` inclusive, `1...10` exclusive |
 | Conversion | `.to_i`, `.to_f`, `.to_s` for safe conversion |
+
+---
+
+## Solutions
+
+### Exercise 1
+
+```ruby
+# Add liter/gallon conversions to converter.rb
+# 1 gallon = 3.78541 liters
+
+# Add these two lines to the CONVERSIONS hash in converter.rb:
+CONVERSIONS = {
+  # ... existing conversions ...
+  ["km",    "miles"]  => ->(v) { v * 0.621371 },
+  ["miles", "km"]     => ->(v) { v * 1.60934  },
+  ["kg",    "lbs"]    => ->(v) { v * 2.20462  },
+  ["lbs",   "kg"]     => ->(v) { v * 0.453592 },
+  ["c",     "f"]      => ->(v) { v * 9.0/5 + 32 },
+  ["f",     "c"]      => ->(v) { (v - 32) * 5.0/9 },
+  ["m",     "ft"]     => ->(v) { v * 3.28084  },
+  ["ft",    "m"]      => ->(v) { v * 0.3048   },
+  # New conversions:
+  ["l",     "gal"]    => ->(v) { v / 3.78541  },
+  ["gal",   "l"]      => ->(v) { v * 3.78541  },
+}
+
+# ruby converter.rb 10 l gal    # => 10.0 l = 2.6417 gal
+# ruby converter.rb 1 gal l     # => 1.0 gal = 3.7854 l
+```
+
+### Exercise 2
+
+```ruby
+# stats.rb — min, max, sum, mean, median of numbers
+# Usage: ruby stats.rb 3 1 4 1 5 9 2 6
+
+if ARGV.empty?
+  puts "Usage: stats.rb number1 number2 ..."
+  exit 1
+end
+
+numbers = ARGV.map(&:to_f)
+sorted  = numbers.sort
+count   = numbers.length
+sum     = numbers.sum
+mean    = sum / count
+
+median = if count.odd?
+           sorted[count / 2]
+         else
+           (sorted[count / 2 - 1] + sorted[count / 2]) / 2.0
+         end
+
+puts "Count:  #{count}"
+puts "Min:    #{numbers.min}"
+puts "Max:    #{numbers.max}"
+puts "Sum:    #{sum}"
+puts "Mean:   #{mean.round(4)}"
+puts "Median: #{median}"
+
+# ruby stats.rb 3 1 4 1 5 9 2 6
+# Count:  8
+# Min:    1.0
+# Max:    9.0
+# Sum:    31.0
+# Mean:   3.875
+# Median: 3.5
+```
+
+### Exercise 3
+
+```ruby
+# anagram.rb — check if two words are anagrams
+# Usage: ruby anagram.rb listen silent
+
+if ARGV.length < 2
+  puts "Usage: anagram.rb word1 word2"
+  exit 1
+end
+
+word1, word2 = ARGV[0].downcase, ARGV[1].downcase
+
+# Two words are anagrams if they have the same sorted characters
+result = word1.chars.sort == word2.chars.sort
+
+puts result
+# ruby anagram.rb listen silent   # => true
+# ruby anagram.rb hello world     # => false
+# ruby anagram.rb Astronomer MoonStarer  # => true (case-insensitive)
+```
+
+### Exercise 4
+
+```ruby
+# nato.rb — NATO phonetic alphabet converter
+# Usage: ruby nato.rb hello
+
+NATO = {
+  "a" => "Alpha",   "b" => "Bravo",   "c" => "Charlie", "d" => "Delta",
+  "e" => "Echo",    "f" => "Foxtrot", "g" => "Golf",    "h" => "Hotel",
+  "i" => "India",   "j" => "Juliet",  "k" => "Kilo",    "l" => "Lima",
+  "m" => "Mike",    "n" => "November","o" => "Oscar",   "p" => "Papa",
+  "q" => "Quebec",  "r" => "Romeo",   "s" => "Sierra",  "t" => "Tango",
+  "u" => "Uniform", "v" => "Victor",  "w" => "Whiskey", "x" => "X-ray",
+  "y" => "Yankee",  "z" => "Zulu"
+}
+
+input = ARGV.join(" ")
+
+if input.empty?
+  puts "Usage: nato.rb text"
+  exit 1
+end
+
+input.downcase.chars.each do |char|
+  if NATO.key?(char)
+    print "#{NATO[char]} "
+  elsif char == " "
+    print "/ "
+  end
+end
+puts
+
+# ruby nato.rb SOS   # => Sierra Oscar Sierra
+# ruby nato.rb hello # => Hotel Echo Lima Lima Oscar
+```

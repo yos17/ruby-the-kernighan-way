@@ -264,3 +264,334 @@ puts "   cd #{name} && bundle install"
 | `bundle exec` | run with exact gem versions from Gemfile |
 | Thor | build CLI tools with commands and options |
 | Rake | task automation (like make, but Ruby) |
+
+---
+
+## Solutions
+
+### Exercise 1
+
+```ruby
+# wordtools gem structure
+# A gem that wraps all the text tools from Ch4
+
+# Directory layout:
+# wordtools/
+# ├── bin/
+# │   └── wordtools
+# ├── lib/
+# │   ├── wordtools.rb
+# │   └── wordtools/
+# │       ├── stats.rb
+# │       ├── anagram.rb
+# │       └── nato.rb
+# ├── spec/
+# │   └── wordtools_spec.rb
+# ├── wordtools.gemspec
+# └── Gemfile
+
+# --- bin/wordtools ---
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require_relative "../lib/wordtools"
+
+WordTools::CLI.start(ARGV)
+
+# --- lib/wordtools.rb ---
+require_relative "wordtools/stats"
+require_relative "wordtools/anagram"
+require_relative "wordtools/nato"
+require_relative "wordtools/cli"
+
+module WordTools
+  VERSION = "0.1.0"
+end
+
+# --- lib/wordtools/cli.rb ---
+require 'optparse'
+
+module WordTools
+  class CLI
+    def self.start(args)
+      command = args.shift
+
+      case command
+      when "stats"
+        numbers = args.map(&:to_f)
+        puts Stats.analyze(numbers)
+      when "anagram"
+        puts Anagram.check?(args[0], args[1])
+      when "nato"
+        puts NATO.encode(args.join(" "))
+      when nil, "--help", "-h"
+        puts <<~HELP
+          wordtools - Text utility toolbox
+
+          Usage: wordtools <command> [args]
+
+          Commands:
+            stats  <num1> <num2> ...   Statistical analysis of numbers
+            anagram <word1> <word2>    Check if two words are anagrams
+            nato <text>                Encode text as NATO phonetic alphabet
+
+          Examples:
+            wordtools stats 1 2 3 4 5
+            wordtools anagram listen silent
+            wordtools nato SOS
+        HELP
+      else
+        puts "Unknown command: #{command}"
+        exit 1
+      end
+    end
+  end
+end
+
+# --- lib/wordtools/stats.rb ---
+module WordTools
+  module Stats
+    def self.analyze(numbers)
+      return "No numbers provided" if numbers.empty?
+
+      sorted = numbers.sort
+      count  = numbers.length
+      sum    = numbers.sum
+      mean   = sum / count
+
+      median = count.odd? ? sorted[count / 2] :
+               (sorted[count / 2 - 1] + sorted[count / 2]) / 2.0
+
+      <<~STATS
+        Count:  #{count}
+        Min:    #{numbers.min}
+        Max:    #{numbers.max}
+        Sum:    #{sum}
+        Mean:   #{mean.round(4)}
+        Median: #{median}
+      STATS
+    end
+  end
+end
+
+# --- wordtools.gemspec ---
+Gem::Specification.new do |spec|
+  spec.name        = "wordtools"
+  spec.version     = "0.1.0"
+  spec.summary     = "Text utility toolbox"
+  spec.description = "CLI and library for text stats, anagram checking, and NATO alphabet"
+  spec.authors     = ["Your Name"]
+  spec.email       = ["you@example.com"]
+  spec.homepage    = "https://github.com/yourname/wordtools"
+  spec.license     = "MIT"
+
+  spec.files         = Dir["lib/**/*.rb", "bin/*", "README.md"]
+  spec.bindir        = "bin"
+  spec.executables   = ["wordtools"]
+  spec.require_paths = ["lib"]
+
+  spec.required_ruby_version = ">= 3.0"
+
+  spec.add_development_dependency "rspec", "~> 3.0"
+end
+
+# Build and install:
+# gem build wordtools.gemspec
+# gem install wordtools-0.1.0.gem
+```
+
+### Exercise 2
+
+```ruby
+# Rakefile for the Ruby Software Tools project
+
+require 'rake/clean'
+
+# Files to clean up
+CLEAN.include("**/*.gem", "tmp/", "coverage/")
+
+# Default task
+task default: [:test]
+
+desc "Run all tests"
+task :test do
+  ruby_files = Dir["spec/**/*_spec.rb"]
+  if ruby_files.empty?
+    puts "No spec files found. Looking for test files..."
+    ruby_files = Dir["test/**/*_test.rb"]
+  end
+
+  if ruby_files.empty?
+    puts "No test files found."
+  else
+    ruby_files.each do |f|
+      puts "Running #{f}..."
+      sh "ruby #{f}"
+    end
+  end
+end
+
+desc "Install dependencies"
+task :install do
+  sh "bundle install"
+end
+
+desc "Clean generated files"
+task :clean do
+  sh "rm -rf *.gem tmp/ coverage/"
+  puts "Cleaned."
+end
+
+desc "Build gem"
+task :build do
+  gemspec = Dir["*.gemspec"].first
+  if gemspec
+    sh "gem build #{gemspec}"
+    puts "Gem built successfully."
+  else
+    puts "No .gemspec found."
+    exit 1
+  end
+end
+
+desc "Run linter (rubocop)"
+task :lint do
+  sh "bundle exec rubocop" rescue puts "rubocop not installed — run: gem install rubocop"
+end
+
+desc "Show project stats"
+task :stats do
+  rb_files = Dir["lib/**/*.rb", "bin/*"]
+  total_lines = rb_files.sum { |f| File.readlines(f).length }
+  puts "Ruby files: #{rb_files.length}"
+  puts "Total lines: #{total_lines}"
+end
+
+namespace :chapter do
+  Dir["chapters/*/"].each do |dir|
+    name = File.basename(dir)
+    desc "Run examples from #{name}"
+    task name do
+      Dir["#{dir}*.rb"].each { |f| sh "ruby #{f}" rescue nil }
+    end
+  end
+end
+```
+
+### Exercise 3
+
+```ruby
+# github_repos.rb — fetch your GitHub repos and show them in a table
+# Usage: ruby github_repos.rb USERNAME
+
+require 'net/http'
+require 'uri'
+require 'json'
+
+username = ARGV[0]
+
+unless username
+  puts "Usage: github_repos.rb USERNAME"
+  exit 1
+end
+
+puts "Fetching repos for @#{username}..."
+
+uri = URI("https://api.github.com/users/#{username}/repos?per_page=100&sort=updated")
+request = Net::HTTP::Get.new(uri)
+request["User-Agent"] = "ruby-kernighan-way/1.0"
+request["Accept"]     = "application/vnd.github.v3+json"
+
+# Add token if available (avoids rate limiting)
+if (token = ENV["GITHUB_TOKEN"])
+  request["Authorization"] = "Bearer #{token}"
+end
+
+response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) do |http|
+  http.request(request)
+end
+
+if response.code != "200"
+  puts "Error: #{response.code} #{response.message}"
+  puts JSON.parse(response.body)["message"] rescue nil
+  exit 1
+end
+
+repos = JSON.parse(response.body)
+
+if repos.empty?
+  puts "No public repositories found."
+  exit 0
+end
+
+# Sort by stars descending
+repos = repos.sort_by { |r| -r["stargazers_count"] }
+
+# Table formatting
+name_width  = [repos.map { |r| r["name"].length }.max, 30].min
+desc_width  = 40
+total_width = name_width + desc_width + 30
+
+puts "\n#{"Repository".ljust(name_width)}  #{"Stars".rjust(6)}  #{"Forks".rjust(5)}  #{"Language".ljust(12)}  Description"
+puts "-" * total_width
+
+repos.each do |repo|
+  name     = repo["name"].ljust(name_width)
+  stars    = repo["stargazers_count"].to_s.rjust(6)
+  forks    = repo["forks_count"].to_s.rjust(5)
+  lang     = (repo["language"] || "—").ljust(12)
+  desc     = (repo["description"] || "").slice(0, desc_width)
+
+  puts "#{name}  #{stars}  #{forks}  #{lang}  #{desc}"
+end
+
+puts "\n#{repos.length} repositories"
+puts "Total stars: #{repos.sum { |r| r['stargazers_count'] }}"
+```
+
+### Exercise 4
+
+```
+# How to publish a gem to rubygems.org
+
+# 1. Create an account at https://rubygems.org/sign_up
+
+# 2. Make sure your .gemspec is complete and valid:
+#    - name, version, summary, authors, email
+#    - files: include all needed files
+#    - homepage and license set
+
+# 3. Build the gem:
+gem build wordtools.gemspec
+# => wordtools-0.1.0.gem
+
+# 4. Authenticate with RubyGems:
+gem signin
+# Enter your RubyGems.org credentials
+
+# Or set up API key:
+curl -u you@example.com https://rubygems.org/api/v1/api_key.yaml > ~/.gem/credentials
+chmod 0600 ~/.gem/credentials
+
+# 5. Push to RubyGems.org:
+gem push wordtools-0.1.0.gem
+# => Pushing gem to https://rubygems.org...
+# => Successfully registered gem: wordtools (0.1.0)
+
+# 6. Verify:
+gem info wordtools
+# Or visit: https://rubygems.org/gems/wordtools
+
+# 7. Install it from anywhere:
+gem install wordtools
+
+# Notes:
+# - Gem names must be unique on rubygems.org
+# - Use semantic versioning: MAJOR.MINOR.PATCH
+# - Add a CHANGELOG.md to document versions
+# - Add a LICENSE file (MIT is common)
+# - Tag the release in git: git tag v0.1.0 && git push --tags
+
+# Yanking a bad release (emergency only):
+# gem yank wordtools -v 0.1.0
+```

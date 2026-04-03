@@ -307,3 +307,152 @@ New things here:
 | `\|\|=` | assign if nil: `x ||= default` |
 | `&.` | safe navigation: `user&.name` returns nil instead of raising |
 | `<=>` | spaceship: -1, 0, 1 — used for sorting and comparison |
+
+---
+
+## Solutions
+
+### Exercise 1
+
+```ruby
+# guess.rb — extended with "play again" loop
+# ruby guess.rb
+
+def play_game
+  secret   = rand(1..100)
+  max      = 7
+  attempts = 0
+
+  puts "I'm thinking of a number between 1 and 100."
+  puts "You have #{max} guesses."
+
+  loop do
+    attempts += 1
+    remaining = max - attempts
+
+    print "\nGuess ##{attempts}: "
+    guess = gets.chomp.to_i
+
+    if guess < 1 || guess > 100
+      puts "Please guess between 1 and 100."
+      attempts -= 1
+      next
+    end
+
+    case guess <=> secret
+    when -1
+      puts remaining > 0 ? "Too low! #{remaining} guesses left." : "Too low! Last guess!"
+    when 1
+      puts remaining > 0 ? "Too high! #{remaining} guesses left." : "Too high! Last guess!"
+    when 0
+      word = attempts == 1 ? "guess" : "guesses"
+      puts "🎉 Correct! You got it in #{attempts} #{word}."
+      return
+    end
+
+    if attempts >= max
+      puts "\n💀 Game over! The number was #{secret}."
+      return
+    end
+  end
+end
+
+loop do
+  play_game
+
+  print "\nPlay again? (y/n): "
+  answer = gets.chomp.downcase
+  break unless answer == "y"
+  puts "\n" + "=" * 40 + "\n"
+end
+
+puts "Thanks for playing!"
+```
+
+### Exercise 2
+
+```ruby
+# fizzbuzz.rb — classic FizzBuzz 1-100
+# ruby fizzbuzz.rb
+
+(1..100).each do |n|
+  puts case
+       when n % 15 == 0 then "FizzBuzz"
+       when n % 3  == 0 then "Fizz"
+       when n % 5  == 0 then "Buzz"
+       else                   n
+       end
+end
+
+# 1, 2, Fizz, 4, Buzz, Fizz, 7, 8, Fizz, Buzz,
+# 11, Fizz, 13, 14, FizzBuzz, 16, ...
+```
+
+### Exercise 3
+
+```ruby
+# prime.rb — check primality and list primes up to N
+# Usage: ruby prime.rb 50
+
+def prime?(n)
+  return false if n < 2
+  return true  if n == 2
+  return false if n.even?
+  # only check odd divisors up to sqrt(n)
+  (3..Math.sqrt(n).to_i).step(2).none? { |i| n % i == 0 }
+end
+
+if ARGV.empty?
+  # Check a single number interactively
+  print "Enter a number: "
+  n = gets.chomp.to_i
+  puts prime?(n) ? "#{n} is prime" : "#{n} is not prime"
+else
+  limit = ARGV[0].to_i
+  primes = (2..limit).select { |n| prime?(n) }
+  puts "Primes up to #{limit}:"
+  puts primes.join(", ")
+  puts "(#{primes.length} primes)"
+end
+
+# ruby prime.rb 50
+# Primes up to 50:
+# 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47
+# (15 primes)
+```
+
+### Exercise 4
+
+```ruby
+# collatz.rb — Collatz conjecture sequence
+# Usage: ruby collatz.rb 27
+
+n = (ARGV[0] || begin
+  print "Enter a starting number: "
+  gets.chomp
+end).to_i
+
+if n < 1
+  puts "Please enter a positive integer"
+  exit 1
+end
+
+sequence = [n]
+steps    = 0
+
+until n == 1
+  n      = n.even? ? n / 2 : 3 * n + 1
+  steps += 1
+  sequence << n
+end
+
+puts "Sequence: #{sequence.join(" → ")}"
+puts "Steps to reach 1: #{steps}"
+
+# ruby collatz.rb 6
+# Sequence: 6 → 3 → 10 → 5 → 16 → 8 → 4 → 2 → 1
+# Steps to reach 1: 8
+#
+# ruby collatz.rb 27   # famous long sequence
+# Steps to reach 1: 111
+```

@@ -554,3 +554,410 @@ bad.errors        # => ["name is required"]
 | `const_get` | look up a class by name | Rails controller routing |
 | `included` hook | called when module is included | setting up class methods |
 | `inherited` hook | called when class is subclassed | plugin/registry systems |
+
+---
+
+## Solutions
+
+### Exercise 1
+
+```ruby
+# validates — build from scratch with presence, format, length, etc.
+# Shows the "naive approach" vs meta approach
+
+# --- NAIVE APPROACH (without metaprogramming) ---
+class UserNaive
+  attr_accessor :name, :email
+
+  def valid?
+    errors = []
+    errors << "name can't be blank"            if name.nil? || name.strip.empty?
+    errors << "name is too short (min 2 chars)" if name && name.length < 2
+    errors << "email can't be blank"            if email.nil? || email.strip.empty?
+    errors << "email format is invalid"         if email && !email.match?(/\A\S+@\S+\.\S+\z/)
+    @errors = errors
+    errors.empty?
+  end
+end
+# Problem: every class needs its own valid? logic. Lots of repetition.
+
+# --- META APPROACH (class macro via define_method) ---
+module Validations
+  def self.included(base)
+    base.extend(ClassMethods)
+    base.instance_variable_set(:@rules, [])
+  end
+
+  module ClassMethods
+    def validates(field, **options)
+      @rules ||= []
+      @rules  << { field: field, options: options }
+    end
+
+    def rules
+      @rules
+    end
+  end
+
+  def valid?
+    @errors = []
+    self.class.rules.each do |rule|
+      field   = rule[:field]
+      options = rule[:options]
+      value   = send(field)
+
+      if options[:presence]
+        if value.nil? || (value.respond_to?(:strip) && value.strip.empty?)
+          @errors << "#{field} can't be blank"
+          next   # skip other checks if blank
+        end
+      end
+
+      next if value.nil?
+
+      if (fmt = options[:format])
+        @errors << "#{field} is invalid" unless value.to_s.match?(fmt)
+      end
+
+      if (range = options[:length])
+        @errors << "#{field} is too short (min #{range.min})" if value.length < range.min
+        @errors << "#{field} is too long (max #{range.max})"  if value.length > range.max
+      end
+
+      if options[:numericality]
+        @errors << "#{field} must be a number" unless value.is_a?(Numeric)
+      end
+
+      if (in_list = options[:inclusion])
+        @errors << "#{field} must be one of: #{in_list.join(', ')}" unless in_list.include?(value)
+      end
+    end
+    @errors.empty?
+  end
+
+  def errors
+    @errors || []
+  end
+end
+
+# Usage — clean DSL, no repeated logic:
+class User
+  include Validations
+
+  attr_accessor :name, :email, :role, :age
+
+  validates :name,  presence: true, length: (2..50)
+  validates :email, presence: true, format: /\A[\w+\-.]+@[a-z\d\-.]+\.[a-z]+\z/i
+  validates :role,  inclusion: %w[admin user guest]
+  validates :age,   numericality: true
+
+  def initialize(attrs = {})
+    attrs.each { |k, v| send("#{k}=", v) }
+  end
+end
+
+u = User.new(name: "Yosia", email: "yosia@example.com", role: "admin", age: 30)
+u.valid?    # => true
+
+bad = User.new(name: "X", email: "invalid", role: "superuser", age: "old")
+bad.valid?  # => false
+bad.errors  # => ["name is too short (min 2 chars)", "email is invalid",
+            #     "role must be one of: admin, user, guest", "age must be a number"]
+```
+
+### Exercise 2
+
+```ruby
+# memoize — class macro that caches expensive method results
+
+# --- NAIVE APPROACH ---
+class FibNaive
+  def fibonacci(n)
+    @fib_cache ||= {}
+    @fib_cache[n] ||= begin
+      return n if n <= 1
+      fibonacci(n - 1) + fibonacci(n - 2)
+    end
+  end
+  # Problem: must manually add caching logic to every method
+end
+
+# --- META APPROACH (class macro) ---
+module Memoizable
+  def self.included(base)
+    base.extend(ClassMethods)
+  end
+
+  module ClassMethods
+    def memoize(*method_names)
+      method_names.each do |name|
+        # Store the original unbounded method
+        original = instance_method(name)
+
+        define_method(name) do |*args|
+          @_memo_cache       ||= {}
+          @_memo_cache[name] ||= {}
+
+          # Use the arguments as the cache key
+          unless @_memo_cache[name].key?(args)
+            @_memo_cache[name][args] = original.bind(self).call(*args)
+          end
+          @_memo_cache[name][args]
+        end
+      end
+    end
+  end
+end
+
+# Usage:
+class Math
+  include Memoizable
+
+  def fibonacci(n)
+    return n if n <= 1
+    fibonacci(n - 1) + fibonacci(n - 2)
+  end
+
+  def factorial(n)
+    return 1 if n <= 1
+    n * factorial(n - 1)
+  end
+
+  memoize :fibonacci, :factorial   # one line caches both methods
+end
+
+m = Math.new
+m.fibonacci(35)   # => 9227465 (fast with memoization)
+m.fibonacci(35)   # => 9227465 (from cache, instant)
+m.factorial(10)   # => 3628800
+```
+
+### Exercise 3
+
+```ruby
+# delegator — delegate :method, to: :target_object
+
+# --- NAIVE APPROACH ---
+class OrderNaive
+  def initialize(user)
+    @user = user
+  end
+
+  def name  = @user.name
+  def email = @user.email
+  def age   = @user.age
+  # Problem: tedious to write, easy to forget one
+end
+
+# --- META APPROACH ---
+module Delegatable
+  def self.included(base)
+    base.extend(ClassMethods)
+  end
+
+  module ClassMethods
+    def delegate(*methods, to:)
+      target = to   # capture in closure
+
+      methods.each do |method_name|
+        define_method(method_name) do |*args, &block|
+          receiver = send(target)
+          raise "#{target} is nil for delegation of #{method_name}" if receiver.nil?
+          receiver.send(method_name, *args, &block)
+        end
+      end
+    end
+  end
+end
+
+# Usage:
+User = Struct.new(:name, :email, :age)
+
+class Order
+  include Delegatable
+
+  attr_reader :total, :user
+
+  delegate :name, :email, :age, to: :user   # one line, DRY
+
+  def initialize(user, total)
+    @user  = user
+    @total = total
+  end
+end
+
+user  = User.new("Yosia", "yosia@example.com", 30)
+order = Order.new(user, 99.99)
+
+order.name    # => "Yosia"   (delegated to order.user.name)
+order.email   # => "yosia@example.com"
+order.age     # => 30
+order.total   # => 99.99     (own method)
+```
+
+### Exercise 4
+
+```ruby
+# observable — on(:save) { |obj| ... } callback system
+
+# --- NAIVE APPROACH ---
+class ArticleNaive
+  def save
+    # ... save logic ...
+    after_save_callback.call(self) if @after_save_callback
+  end
+  # Problem: one callback per event, can't register multiple
+end
+
+# --- META APPROACH ---
+module Observable
+  def self.included(base)
+    base.extend(ClassMethods)
+    base.instance_variable_set(:@_callbacks, Hash.new { |h, k| h[k] = [] })
+  end
+
+  module ClassMethods
+    def on(event, &block)
+      @_callbacks[event] << block
+    end
+
+    def callbacks
+      @_callbacks
+    end
+  end
+
+  def trigger(event, *args)
+    self.class.callbacks[event].each { |cb| cb.call(self, *args) }
+  end
+end
+
+# Usage:
+class Article
+  include Observable
+
+  attr_accessor :title, :published
+
+  on(:save)    { |a|   puts "Article '#{a.title}' saved to database" }
+  on(:save)    { |a|   puts "Cache invalidated for #{a.title}" }
+  on(:publish) { |a|   puts "Email sent: '#{a.title}' is now live!" }
+  on(:publish) { |a,t| puts "Published at #{t}" }
+
+  def initialize(title)
+    @title     = title
+    @published = false
+  end
+
+  def save
+    # ... save logic ...
+    trigger(:save)
+    self
+  end
+
+  def publish!
+    @published = true
+    save
+    trigger(:publish, Time.now)
+    self
+  end
+end
+
+a = Article.new("Ruby Metaprogramming")
+a.save
+# Article 'Ruby Metaprogramming' saved to database
+# Cache invalidated for Ruby Metaprogramming
+
+a.publish!
+# Article 'Ruby Metaprogramming' saved to database
+# Cache invalidated for Ruby Metaprogramming
+# Email sent: 'Ruby Metaprogramming' is now live!
+# Published at 2026-04-03 10:08:00 +0200
+```
+
+### Exercise 5
+
+```ruby
+# HTML DSL — html { head { title "Hello" }; body { p "World" } }
+# Uses instance_eval to make the block run in the builder's context
+
+class HtmlBuilder
+  def initialize(tag, attrs = {})
+    @tag      = tag
+    @attrs    = attrs
+    @children = []
+  end
+
+  def method_missing(tag, content = nil, **attrs, &block)
+    child = HtmlBuilder.new(tag, attrs)
+    if block
+      child.instance_eval(&block)
+    elsif content
+      child << content.to_s
+    end
+    @children << child
+    child
+  end
+
+  def respond_to_missing?(name, include_private = false)
+    true
+  end
+
+  def <<(content)
+    @children << content
+    self
+  end
+
+  def render(indent = 0)
+    spaces     = "  " * indent
+    attr_str   = @attrs.map { |k, v| " #{k}=\"#{v}\"" }.join
+    inner      = @children.map { |c| c.is_a?(String) ? "#{spaces}  #{c}" : c.render(indent + 1) }.join("\n")
+
+    if inner.empty?
+      "#{spaces}<#{@tag}#{attr_str}></#{@tag}>"
+    else
+      "#{spaces}<#{@tag}#{attr_str}>\n#{inner}\n#{spaces}</#{@tag}>"
+    end
+  end
+
+  def to_s
+    render
+  end
+end
+
+def html(&block)
+  builder = HtmlBuilder.new("html")
+  builder.instance_eval(&block)
+  "<!DOCTYPE html>\n#{builder.render}"
+end
+
+# Usage:
+puts html {
+  head {
+    title "Hello, Ruby!"
+    meta charset: "utf-8"
+  }
+  body {
+    h1 "Welcome"
+    p  "This HTML was generated by a Ruby DSL."
+    div(class: "content") {
+      p "Metaprogramming is powerful."
+      p "instance_eval makes DSLs possible."
+    }
+  }
+}
+
+# <!DOCTYPE html>
+# <html>
+#   <head>
+#     <title>
+#       Hello, Ruby!
+#     </title>
+#     <meta charset="utf-8"></meta>
+#   </head>
+#   <body>
+#     <h1>
+#       Welcome
+#     </h1>
+#     ...
+#   </body>
+# </html>
+```

@@ -201,3 +201,93 @@ name = "Yosia"  # inline comment
 | `to_f`, `to_i`, `to_s` | type conversion |
 | `\|\|` | "use right side if left is nil/false" |
 | `case/when` | cleaner than long if/elsif chains |
+
+---
+
+## Solutions
+
+### Exercise 1
+
+```ruby
+# greet.rb — name and optional greeting from command line
+# Usage: ruby greet.rb Yosia "Good morning"
+
+name     = ARGV[0] || "World"
+greeting = ARGV[1] || "Hello"
+
+puts "#{greeting}, #{name}!"
+
+# ruby greet.rb Yosia "Good morning"  # => Good morning, Yosia!
+# ruby greet.rb Yosia                 # => Hello, Yosia!
+# ruby greet.rb                       # => Hello, World!
+```
+
+### Exercise 2
+
+```ruby
+# celsius.rb — Celsius to Fahrenheit converter
+# Usage: ruby celsius.rb 100
+
+celsius    = ARGV[0].to_f
+fahrenheit = celsius * 9.0 / 5 + 32
+
+puts "#{celsius}°C = #{fahrenheit}°F"
+
+# ruby celsius.rb 100   # => 100.0°C = 212.0°F
+# ruby celsius.rb 0     # => 0.0°C = 32.0°F
+# ruby celsius.rb 37    # => 37.0°C = 98.6°F
+```
+
+### Exercise 3
+
+```ruby
+# calculator.rb — extended with ** and %
+# Run: ruby calculator.rb (interactive)
+
+print "First number: "
+a = gets.chomp.to_f
+
+print "Operator (+, -, *, /, **, %): "
+op = gets.chomp
+
+print "Second number: "
+b = gets.chomp.to_f
+
+result = case op
+         when "+" then a + b
+         when "-" then a - b
+         when "*" then a * b
+         when "**" then a ** b
+         when "%" then a % b
+         when "/"
+           b == 0 ? "Error: division by zero" : a / b
+         else
+           "Unknown operator: #{op}"
+         end
+
+puts "Result: #{result}"
+
+# 2 ** 10  # => 1024.0
+# 17 % 5   # => 2.0
+```
+
+### Exercise 4
+
+```ruby
+# echo.rb — print all args numbered
+# Usage: ruby echo.rb one two three
+
+if ARGV.empty?
+  puts "Usage: echo.rb arg1 arg2 ..."
+  exit 1
+end
+
+ARGV.each_with_index do |arg, i|
+  puts "#{i + 1}: #{arg}"
+end
+
+# ruby echo.rb one two three
+# 1: one
+# 2: two
+# 3: three
+```

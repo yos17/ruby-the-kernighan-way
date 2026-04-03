@@ -377,3 +377,298 @@ This is a taste of metaprogramming — covered fully in Chapter 10.
 | `include Comparable` | define `<=>`, get all comparisons free |
 | Struct | quick value classes |
 | `method_missing` | intercept undefined method calls |
+
+---
+
+## Solutions
+
+### Exercise 1
+
+```ruby
+# Vector class with full arithmetic and geometry operations
+
+class Vector
+  attr_reader :x, :y, :z
+
+  def initialize(x, y, z = 0)
+    @x, @y, @z = x.to_f, y.to_f, z.to_f
+  end
+
+  # Vector addition
+  def +(other)
+    Vector.new(x + other.x, y + other.y, z + other.z)
+  end
+
+  # Vector subtraction
+  def -(other)
+    Vector.new(x - other.x, y - other.y, z - other.z)
+  end
+
+  # Scalar multiplication
+  def *(scalar)
+    Vector.new(x * scalar, y * scalar, z * scalar)
+  end
+
+  # Dot product
+  def dot(other)
+    x * other.x + y * other.y + z * other.z
+  end
+
+  # Magnitude (length)
+  def magnitude
+    Math.sqrt(x**2 + y**2 + z**2)
+  end
+  alias length magnitude
+
+  # Normalized unit vector
+  def normalize
+    mag = magnitude
+    raise "Cannot normalize zero vector" if mag == 0
+    Vector.new(x / mag, y / mag, z / mag)
+  end
+
+  def ==(other)
+    x == other.x && y == other.y && z == other.z
+  end
+
+  def to_s
+    "(#{x}, #{y}, #{z})"
+  end
+
+  def to_a
+    [x, y, z]
+  end
+end
+
+# Usage:
+v1 = Vector.new(1, 2, 3)
+v2 = Vector.new(4, 5, 6)
+
+v1 + v2         # => (5.0, 7.0, 9.0)
+v1 - v2         # => (-3.0, -3.0, -3.0)
+v1 * 2          # => (2.0, 4.0, 6.0)
+v1.dot(v2)      # => 32.0  (1*4 + 2*5 + 3*6)
+v1.magnitude    # => 3.7416...  (sqrt(14))
+v1.normalize    # => (0.267, 0.535, 0.802)
+
+puts v1 + v2    # => (5.0, 7.0, 9.0)
+```
+
+### Exercise 2
+
+```ruby
+# Queue class backed by an array
+
+class MyQueue
+  def initialize
+    @data = []
+  end
+
+  # Add to the back of the queue
+  def enqueue(item)
+    @data.push(item)
+    self
+  end
+  alias << enqueue
+
+  # Remove and return from the front
+  def dequeue
+    raise "Queue is empty" if empty?
+    @data.shift
+  end
+
+  # Look at the front without removing
+  def peek
+    raise "Queue is empty" if empty?
+    @data.first
+  end
+
+  def empty?
+    @data.empty?
+  end
+
+  def size
+    @data.size
+  end
+
+  def to_s
+    "Queue(#{@data.join(' → ')})"
+  end
+
+  def to_a
+    @data.dup
+  end
+end
+
+# Usage:
+q = MyQueue.new
+q.enqueue("first").enqueue("second").enqueue("third")
+puts q        # => Queue(first → second → third)
+puts q.size   # => 3
+puts q.peek   # => "first"
+q.dequeue     # => "first"
+puts q        # => Queue(second → third)
+puts q.empty? # => false
+
+# Using << alias:
+q << "fourth"
+puts q        # => Queue(second → third → fourth)
+```
+
+### Exercise 3
+
+```ruby
+# BankAccount with freeze protection
+
+class BankAccount
+  attr_reader :owner, :balance, :frozen?
+
+  def initialize(owner, initial_balance = 0)
+    @owner    = owner
+    @balance  = initial_balance
+    @history  = []
+    @frozen   = false
+  end
+
+  def deposit(amount)
+    check_frozen!
+    raise ArgumentError, "Amount must be positive" unless amount > 0
+    @balance += amount
+    record("Deposit", amount)
+    self
+  end
+
+  def withdraw(amount)
+    check_frozen!
+    raise ArgumentError, "Amount must be positive" unless amount > 0
+    raise "Insufficient funds" if amount > @balance
+    @balance -= amount
+    record("Withdrawal", amount)
+    self
+  end
+
+  def freeze!
+    @frozen = true
+    record("Account frozen", 0)
+    self
+  end
+
+  def unfreeze!
+    @frozen = false
+    record("Account unfrozen", 0)
+    self
+  end
+
+  def frozen?
+    @frozen
+  end
+
+  def to_s
+    status = @frozen ? " [FROZEN]" : ""
+    "BankAccount(#{@owner}, $#{'%.2f' % @balance}#{status})"
+  end
+
+  private
+
+  def check_frozen!
+    raise "Account is frozen. No transactions allowed." if @frozen
+  end
+
+  def record(type, amount)
+    @history << { type: type, amount: amount, date: Time.now }
+  end
+end
+
+# Usage:
+account = BankAccount.new("Yosia", 1000)
+account.deposit(500)
+puts account         # => BankAccount(Yosia, $1500.00)
+
+account.freeze!
+puts account         # => BankAccount(Yosia, $1500.00) [FROZEN]
+
+begin
+  account.deposit(100)
+rescue RuntimeError => e
+  puts e.message     # => Account is frozen. No transactions allowed.
+end
+
+account.unfreeze!
+account.withdraw(200)
+puts account         # => BankAccount(Yosia, $1300.00)
+```
+
+### Exercise 4
+
+```ruby
+# Matrix class for 2x2 matrices
+
+class Matrix2x2
+  attr_reader :a, :b, :c, :d
+
+  # Matrix layout:
+  # | a  b |
+  # | c  d |
+
+  def initialize(a, b, c, d)
+    @a, @b, @c, @d = a.to_f, b.to_f, c.to_f, d.to_f
+  end
+
+  def +(other)
+    Matrix2x2.new(a + other.a, b + other.b,
+                  c + other.c, d + other.d)
+  end
+
+  def *(other)
+    case other
+    when Matrix2x2
+      # Standard matrix multiplication
+      Matrix2x2.new(
+        a * other.a + b * other.c,  a * other.b + b * other.d,
+        c * other.a + d * other.c,  c * other.b + d * other.d
+      )
+    when Numeric
+      Matrix2x2.new(a * other, b * other, c * other, d * other)
+    end
+  end
+
+  def determinant
+    a * d - b * c
+  end
+
+  def transpose
+    Matrix2x2.new(a, c, b, d)
+  end
+
+  def inverse
+    det = determinant
+    raise "Matrix is singular (determinant = 0)" if det == 0
+    Matrix2x2.new(d / det, -b / det, -c / det, a / det)
+  end
+
+  def ==(other)
+    [a, b, c, d] == [other.a, other.b, other.c, other.d]
+  end
+
+  def to_s
+    "|#{a.to_i} #{b.to_i}|\n|#{c.to_i} #{d.to_i}|"
+  end
+end
+
+# Usage:
+m1 = Matrix2x2.new(1, 2, 3, 4)
+m2 = Matrix2x2.new(5, 6, 7, 8)
+
+puts m1 + m2
+# |6 8|
+# |10 12|
+
+puts m1 * m2
+# |19 22|
+# |43 50|
+
+puts "det: #{m1.determinant}"   # => det: -2.0
+puts m1.transpose
+# |1 3|
+# |2 4|
+```
