@@ -1,11 +1,10 @@
 # todo_buggy.rb — a todo list with 3 hidden bugs
 # Your mission: find and fix them using Pry or the VSCode debugger
 #
-# To debug with Pry:
-#   gem install pry
-#   Add "require 'pry'" at the top
-#   Add "binding.pry" where you want to pause
+# To debug with binding.irb (built in, no gems needed):
+#   Add "binding.irb" where you want to pause
 #   Run: ruby todo_buggy.rb
+#   Use: step, next, continue, info in the REPL
 #
 # To debug with VSCode:
 #   Open this file, set breakpoints, press F5

@@ -4,27 +4,36 @@
 
 `puts` debugging works — until it doesn't. When your program has 20 variables and the bug is in a method called from three different places, you need a real debugger. Ruby has excellent ones.
 
-This chapter covers two tools:
-- **Pry** — a powerful REPL that drops you inside your running code
+This chapter covers two approaches:
+- **`binding.irb`** — a built-in REPL with stepping (Ruby 3.3+, no gems needed)
 - **VSCode + debug gem** — a visual debugger with breakpoints, stepping, and variable inspection
+
+We also cover **Pry** (a popular third-party REPL) and explain why `binding.irb` has replaced the old `pry` + `pry-byebug` combo.
 
 ---
 
 ## Setup
 
-### Install Pry
+### Nothing to install (Ruby 3.3+)
+
+Ruby 3.3+ ships with everything you need: **IRB** (the REPL) and the **debug** gem (the stepping engine) are both built in. When you use `binding.irb`, IRB automatically integrates with the debug gem — giving you a Pry-like REPL *plus* `step`, `next`, `continue`.
 
 ```bash
-gem install pry
+ruby --version    # need 3.3+, you have 3.4
 ```
 
-### Install the debug gem (for VSCode)
+No `gem install` required. No Gemfile entry. It just works.
 
-Ruby 3.1+ ships with the `debug` gem. If you're on an older version:
+### What about Pry and pry-byebug?
 
-```bash
-gem install debug
-```
+| Gem | Status | Recommendation |
+|-----|--------|----------------|
+| `pry` | Active | Still useful for exploration, but `irb` now has most features |
+| `pry-byebug` | **Dead** | Doesn't work on Ruby 3.2+ — replaced by debug gem |
+| `byebug` | **Dead** | Same — unmaintained, Ruby ≤ 3.1 only |
+| `debug` | **Built-in** | The official debugger since Ruby 3.1 |
+
+**Bottom line:** Use `binding.irb` for the best of both worlds. Use Pry only if you need its unique features (`cd` into objects, `show-source`).
 
 For VSCode, install the **VSCode rdbg Ruby Debugger** extension:
 1. Open VSCode
@@ -34,18 +43,17 @@ For VSCode, install the **VSCode rdbg Ruby Debugger** extension:
 
 ---
 
-## Part 1: Debugging with Pry
+## Part 1: Debugging with `binding.irb` (The Modern Way)
 
 ### Your First Breakpoint
 
-Pry lets you pause your program and look around. Add `binding.pry` anywhere:
+`binding.irb` pauses your program and drops you into a REPL — no gems required:
 
 ```ruby
 # age_checker.rb
-require 'pry'
 
 def check_age(name, age)
-  binding.pry          # execution stops here
+  binding.irb          # execution stops here
   if age >= 18
     "#{name} is an adult"
   else
@@ -64,64 +72,73 @@ ruby age_checker.rb
 
 You drop into a live session inside `check_age`:
 ```
-    4: def check_age(name, age)
- => 5:   binding.pry
-    6:   if age >= 18
-    7:     "#{name} is an adult"
+From: age_checker.rb @ line 4
 
-[1] pry(main)> name
+    2|
+    3| def check_age(name, age)
+ => 4|   binding.irb
+    5|   if age >= 18
+    6|     "#{name} is an adult"
+
+irb(main):001> name
 => "Alice"
-[2] pry(main)> age
+irb(main):002> age
 => 25
-[3] pry(main)> age >= 18
+irb(main):003> age >= 18
 => true
-[4] pry(main)> exit    # continue execution
+irb(main):004> continue    # run to next breakpoint or end
 ```
 
-When it hits the breakpoint the second time, you see Bob's values. Type `exit` again to finish.
+When it hits the breakpoint the second time, you see Bob's values. Type `continue` again to finish.
 
-### What `binding.pry` Actually Does
+### What `binding.irb` Actually Does
 
-`binding` captures the current scope — all local variables, `self`, the call stack. `pry` opens an interactive REPL in that context. You're not simulating anything — you're running real Ruby inside your running program.
+`binding` captures the current scope — all local variables, `self`, the call stack. `.irb` opens an interactive REPL in that context. You're not simulating anything — you're running real Ruby inside your running program.
+
+Since Ruby 3.3, IRB automatically loads the `debug` gem, so you get **stepping commands for free** — no extra setup.
 
 ---
 
-### Essential Pry Commands
+### Essential `binding.irb` Commands
 
 ```
-Variable inspection:
+Inspection (IRB built-in):
   name              show a variable's value
-  ls                list all variables and methods in scope
-  ls -l             long listing with details
-
-Navigation:
+  ls                list methods on an object (e.g., ls "hello")
+  show_source method_name    show a method's source code
   whereami          show surrounding source code
-  whereami -n 20    show 20 lines of context
-  exit              continue execution (to next breakpoint or end)
+  caller            show the call stack
+
+Stepping (from debug gem — works automatically):
+  step  (s)         step into the next method call
+  next  (n)         step over — execute line, stay in current method
+  finish            run until current method returns
+  continue (c)      run until next breakpoint or end
+  info              show all local variables
+  info ivars        show instance variables
+  backtrace (bt)    show the full call stack
+  break 20          set a breakpoint at line 20
+  break MyClass#foo break when method is called
+  watch @balance    break when value changes
+  catch Exception   break when exception is raised
+
+Exit:
+  continue          continue execution
+  exit              same as continue
   exit!             quit the entire program immediately
-  !!!               same as exit! (emergency exit)
-
-Code inspection:
-  show-source check_age       show a method's source code
-  show-doc String#gsub        show documentation
-  cd obj                      step into an object's context
-  cd ..                       step back out
-
-Stack:
-  caller            show the call stack (Ruby built-in)
-  wtf?              show the last exception's backtrace
-  wtf?!             show the full backtrace (not truncated)
+  q                 quit
 ```
+
+This is what `pry` + `pry-byebug` used to give you — but now it's **zero dependencies**.
 
 ---
 
-### Debugging a Real Bug with Pry
+### Debugging a Real Bug
 
 Here's a buggy program. The word counter gives wrong results:
 
 ```ruby
 # word_counter_buggy.rb
-require 'pry'
 
 def count_words(text)
   words = text.split(",")       # BUG: splitting on comma, not space
@@ -136,7 +153,7 @@ end
 
 def top_words(text, n = 3)
   counts = count_words(text)
-  binding.pry                   # let's inspect what we got
+  binding.irb                   # let's inspect what we got
   counts.sort_by { |_, count| -count }.first(n)
 end
 
@@ -147,17 +164,19 @@ top_words(text).each do |word, count|
 end
 ```
 
-Run it and use Pry to find the bug:
+Run it and inspect:
 ```
-[1] pry(main)> counts
+irb(main):001> counts
 => {"the cat sat on the mat the cat"=>1}     # one big string!
-[2] pry(main)> text.split(",")
+irb(main):002> text.split(",")
 => ["the cat sat on the mat the cat"]         # comma split doesn't work
-[3] pry(main)> text.split
+irb(main):003> text.split
 => ["the", "cat", "sat", "on", "the", "mat", "the", "cat"]   # this is right
+irb(main):004> next                          # step to the next line
+irb(main):005> continue                      # resume execution
 ```
 
-The fix: change `text.split(",")` to `text.split`. In Pry you can even test the fix live before changing the file.
+The fix: change `text.split(",")` to `text.split`. In the REPL you can test the fix live before changing the file.
 
 ---
 
@@ -167,7 +186,7 @@ When a method is called thousands of times, you don't want to stop every time:
 
 ```ruby
 def process_user(user)
-  binding.pry if user[:name] == "Bob"   # only stop for Bob
+  binding.irb if user[:name] == "Bob"   # only stop for Bob
   # ... processing
 end
 ```
@@ -177,57 +196,75 @@ Or stop only when something looks wrong:
 ```ruby
 def calculate_price(item)
   price = item[:base_price] * item[:quantity]
-  binding.pry if price.negative?        # something is wrong
+  binding.irb if price.negative?        # something is wrong
   price
 end
 ```
 
 ---
 
-### Pry with Objects
+### Stepping Through Code — A Full Example
 
-Pry's `cd` command lets you step inside any object:
+```ruby
+# stepping_demo.rb
+
+def greet(name)
+  greeting = "Hello, #{name}"
+  greeting.upcase
+end
+
+def main
+  binding.irb              # start here
+  result = greet("Ruby")
+  puts result
+end
+
+main
+```
+
+```
+irb(main):001> step         # step INTO greet()
+# now inside greet(), line: greeting = "Hello, #{name}"
+irb(main):002> info         # show local variables
+%self = main
+name = "Ruby"
+irb(main):003> next         # execute this line, stay in greet()
+irb(main):004> info
+%self = main
+name = "Ruby"
+greeting = "Hello, Ruby"
+irb(main):005> finish       # finish greet(), return to main
+irb(main):006> result
+=> "HELLO, RUBY"
+irb(main):007> continue     # resume execution
+```
+
+This is everything `pry-byebug` used to do — with zero gems.
+
+---
+
+### What About Pry?
+
+Pry (`gem install pry`) is still useful for one thing `binding.irb` can't do: **`cd` into objects**.
 
 ```ruby
 require 'pry'
 
-class BankAccount
-  attr_reader :name, :balance, :transactions
-
-  def initialize(name, balance)
-    @name = name
-    @balance = balance
-    @transactions = []
-  end
-
-  def deposit(amount)
-    @transactions << { type: :deposit, amount: amount }
-    @balance += amount
-  end
-end
-
 account = BankAccount.new("Alice", 100)
-account.deposit(50)
-account.deposit(25)
 binding.pry
 ```
 
 ```
 [1] pry(main)> cd account
-[2] pry(#<BankAccount>)> name
-=> "Alice"
-[3] pry(#<BankAccount>)> balance
-=> 175
-[4] pry(#<BankAccount>)> transactions
-=> [{:type=>:deposit, :amount=>50}, {:type=>:deposit, :amount=>25}]
-[5] pry(#<BankAccount>)> ls
+[2] pry(#<BankAccount>)> @balance
+=> 100
+[3] pry(#<BankAccount>)> ls
 BankAccount#methods: balance  deposit  name  transactions
 instance variables: @balance  @name  @transactions
-[6] pry(#<BankAccount>)> cd ..
-[7] pry(main)>
+[4] pry(#<BankAccount>)> cd ..
 ```
 
-`cd` is powerful — you can `cd` into a class, a module, even a hash. Use it to explore.
+If you don't need `cd`, **stick with `binding.irb`** — it's built in and has stepping.
 
 ---
 
@@ -235,7 +272,7 @@ instance variables: @balance  @name  @transactions
 
 ### Why a Visual Debugger?
 
-Pry is great for quick inspections. But when you need to:
+`binding.irb` is great for quick inspections. But when you need to:
 - Step through code line by line
 - Watch variables change over time
 - Set multiple breakpoints and manage them visually
@@ -313,7 +350,7 @@ The **Variables** panel (left sidebar) shows all locals, instance variables, and
 You don't need VSCode to use Ruby's debugger. The `debug` gem works from the terminal too:
 
 ```ruby
-# Using debugger statement (similar to binding.pry):
+# Using debugger statement (alternative to binding.irb):
 require 'debug'
 
 def factorial(n)
@@ -390,7 +427,7 @@ Watch:
 
 ## Your Program: Debugging a Buggy Todo App
 
-Here's a todo app with three bugs. Use Pry or the VSCode debugger to find and fix them.
+Here's a todo app with three bugs. Use `binding.irb` or the VSCode debugger to find and fix them.
 
 ```ruby
 # todo_buggy.rb — a todo list with 3 hidden bugs
@@ -555,21 +592,21 @@ Still pending:
 
 **Bug 1 — NilClass error in `complete`:**
 
-Add `binding.pry` (or `debugger`) before the crash:
+Add `binding.irb` before the crash:
 
 ```ruby
 def complete(task_name)
   item = @items.find { |i| i[:task] == task_name }
-  binding.pry
+  binding.irb
   item[:done] = true
 end
 ```
 
-Call `list.complete("Nonexistent")`. In Pry:
+Call `list.complete("Nonexistent")`. In the REPL:
 ```
-[1] pry> item
+irb> item
 => nil
-[2] pry> item[:done]    # NoMethodError: undefined method '[]' for nil
+irb> item[:done]    # NoMethodError: undefined method '[]' for nil
 ```
 
 The fix is clear: check for `nil` before accessing the item.
@@ -579,15 +616,15 @@ The fix is clear: check for `nil` before accessing the item.
 ```ruby
 def pending
   result = @items.select { |i| i[:done] }
-  binding.pry
+  binding.irb
   result
 end
 ```
 
 ```
-[1] pry> result.map { |i| i[:task] }
+irb> result.map { |i| i[:task] }
 => ["Buy groceries", "Walk the dog"]    # these are DONE, not pending!
-[2] pry> @items.reject { |i| i[:done] }.map { |i| i[:task] }
+irb> @items.reject { |i| i[:done] }.map { |i| i[:task] }
 => ["Clean kitchen", "Read chapter 13"] # this is right
 ```
 
@@ -597,27 +634,27 @@ end
 def summary
   total = @items.length
   done = @items.count { |i| i[:done] }
-  binding.pry
+  binding.irb
   percent = (done / total * 100).round
 end
 ```
 
 ```
-[1] pry> done
+irb> done
 => 2
-[2] pry> total
+irb> total
 => 4
-[3] pry> done / total         # => 0 (integer division!)
-[4] pry> done.to_f / total    # => 0.5 (float division)
+irb> done / total         # => 0 (integer division!)
+irb> done.to_f / total    # => 0.5 (float division)
 ```
 
 ---
 
 ## Exercises
 
-1. **Pry exploration:** Open IRB or Pry and explore the `String` class. Use `ls String` to see all methods. Use `show-source String#gsub` to read its implementation. Find a method you didn't know existed.
+1. **IRB exploration:** Open IRB and explore the `String` class. Use `ls String` to see all methods. Use `show_source String#gsub` to read its implementation. Find a method you didn't know existed.
 
-2. **Debug this:** The following method should return the second-largest number, but it doesn't always work. Use Pry to find the bug:
+2. **Debug this:** The following method should return the second-largest number, but it doesn't always work. Use `binding.irb` to find the bug:
    ```ruby
    def second_largest(arr)
      sorted = arr.sort
@@ -651,16 +688,16 @@ end
 
 | Concept | Key point |
 |---------|-----------|
-| `binding.pry` | pause execution, open interactive REPL |
-| `ls` in Pry | list variables and methods in scope |
-| `cd` / `cd ..` | step into/out of objects |
-| `whereami` | show current source context |
-| `wtf?` | show last exception backtrace |
-| `debugger` | pause execution (debug gem / VSCode) |
+| `binding.irb` | pause execution, open REPL with stepping (no gems needed) |
+| `step` / `next` | step into / step over (in `binding.irb`) |
+| `continue` | resume execution until next breakpoint |
+| `finish` | run until current method returns |
+| `info` | show local/instance variables |
+| `break` / `watch` | set breakpoints and watchpoints |
+| `debugger` | alternative breakpoint (debug gem directly) |
 | F10 / F11 | step over / step into (VSCode) |
-| `break` / `watch` | set breakpoints and watchpoints (debug gem) |
-| `info` | show local/instance variables (debug gem) |
-| Conditional breakpoint | `binding.pry if condition` |
+| Conditional breakpoint | `binding.irb if condition` |
+| `pry` + `cd` | step into objects (Pry only, optional gem) |
 
 ---
 
@@ -669,31 +706,17 @@ end
 ### Exercise 1
 
 ```
-$ pry
-[1] pry(main)> ls String
-String.methods: try_convert
-String#methods:
-  %  +  +@  -@  <<  <=>  ==  ===  =~  []  []=  ascii_only?  b  bytes
-  bytesize  byteslice  capitalize  capitalize!  casecmp  casecmp?  center
-  chars  chomp  chomp!  chop  chop!  chr  clear  codepoints  concat  count
-  crypt  delete  delete!  delete_prefix  delete_prefix!  delete_suffix
-  delete_suffix!  downcase  downcase!  dump  each_byte  each_char
-  each_codepoint  each_grapheme_cluster  each_line  empty?  encode
-  encode!  encoding  end_with?  eql?  freeze  getbyte  grapheme_clusters
-  gsub  gsub!  hash  hex  include?  index  insert  inspect  intern  dup
-  length  lines  ljust  lstrip  lstrip!  match  match?  next  next!  oct
-  ord  pack  partition  prepend  replace  reverse  reverse!  rindex  rjust
-  rpartition  rstrip  rstrip!  scan  scrub  scrub!  setbyte  shellescape
-  shellsplit  size  slice  slice!  split  squeeze  squeeze!  start_with?
-  strip  strip!  sub  sub!  succ  succ!  sum  swapcase  swapcase!  to_c
-  to_f  to_i  to_r  to_s  to_str  to_sym  tr  tr!  tr_s  tr_s!  undump
-  unicode_normalize  unicode_normalize!  unpack  unpack1  upcase  upcase!
-  upto  valid_encoding?
+$ irb
+irb(main):001> ls String
+# (lists all String methods)
+
+irb(main):002> show_source String#gsub
+# (shows the source code)
 
 # Interesting discovery: String#squeeze removes consecutive duplicate chars
-[2] pry(main)> "aabbccdd".squeeze
+irb(main):003> "aabbccdd".squeeze
 => "abcd"
-[3] pry(main)> "hello    world".squeeze(" ")
+irb(main):004> "hello    world".squeeze(" ")
 => "hello world"
 ```
 
@@ -701,22 +724,21 @@ String#methods:
 
 ```ruby
 # second_largest — fixed
-require 'pry'
 
 def second_largest(arr)
-  binding.pry
+  binding.irb
   sorted = arr.sort
   sorted[-2]
 end
 
-# In Pry:
-# [1] pry> arr
+# In the REPL:
+# irb> arr
 # => [3, 3, 3]
-# [2] pry> arr.sort
+# irb> arr.sort
 # => [3, 3, 3]
-# [3] pry> arr.uniq.sort
+# irb> arr.uniq.sort
 # => [3]
-# [4] pry> arr.uniq.sort[-2]
+# irb> arr.uniq.sort[-2]
 # => nil          # correct! only one unique value
 
 # Fixed version:
