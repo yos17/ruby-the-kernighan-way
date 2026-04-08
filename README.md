@@ -29,6 +29,7 @@ No slides. No multiple-choice questions. Just code, explanation, and things you 
 | 10 | An attribute system (like Rails) |
 | 11 | A concurrent web scraper |
 | 12 | A CLI tool using gems |
+| 13 | A buggy todo app (debug it!) |
 
 ## Structure
 
