@@ -1,5 +1,12 @@
 # Chapter 11 — Concurrency
 
+Concurrency can sound intimidating, but the beginner version of the idea is simple:
+
+- one task can wait while another task makes progress
+- this is especially useful for network and file operations
+
+You do not need to master all concurrency theory to learn something useful here.
+
 ## Threads — Running Code in Parallel
 
 ```ruby
@@ -34,6 +41,10 @@ puts "All threads finished"
 
 ## Thread Safety — The Problem
 
+The hard part of concurrency is shared state.
+
+If multiple threads touch the same data, you need coordination.
+
 When multiple threads share data, things can go wrong:
 
 ```ruby
@@ -65,6 +76,8 @@ puts counter   # always 100
 ---
 
 ## The GIL (Global Interpreter Lock)
+
+This part can feel confusing on first read. The practical takeaway is more important than the low-level detail: Ruby threads are still very useful for I/O-heavy work, even though they do not give perfect CPU parallelism in MRI.
 
 MRI Ruby (the standard implementation) has a GIL — only one thread runs Ruby code at a time. This means threads help with **I/O-bound** work (file reading, HTTP requests) but not **CPU-bound** work (calculations).
 

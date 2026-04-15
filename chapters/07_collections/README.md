@@ -1,5 +1,16 @@
 # Chapter 7 — Collections in Depth
 
+This chapter is powerful, but it is easy to read it too quickly and turn it into a blur of methods.
+
+A better approach is:
+
+- learn a few collection methods
+- try them in IRB
+- think about what shape of data goes in
+- then look at what shape comes out
+
+Most collection work in Ruby is just transforming data from one shape into another.
+
 ## Arrays — Beyond the Basics
 
 ```ruby
@@ -56,6 +67,12 @@ names.zip(scores).map { |name, score| "#{name}: #{score}" }
 
 ## Hashes — Beyond the Basics
 
+If arrays are ordered lists, hashes are named lookups.
+
+A simple beginner rule:
+- use an array when position matters
+- use a hash when names or keys matter
+
 ```ruby
 # Creation from arrays
 Hash[[:a,:b,:c].zip([1,2,3])]   # => {a:1, b:2, c:3}
@@ -94,6 +111,10 @@ end
 ---
 
 ## Lazy Enumerators — Infinite Collections
+
+This section is more advanced than the earlier collection material.
+
+If you are newer, it is enough to understand the big idea: `lazy` avoids doing all the work up front.
 
 Regular `map`/`select` process ALL elements and return a new array. For large or infinite collections, use lazy evaluation:
 

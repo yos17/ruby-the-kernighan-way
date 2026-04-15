@@ -1,5 +1,13 @@
 # Chapter 6 — Modules and Mixins
 
+This chapter introduces one of the most Ruby-specific design ideas.
+
+It can feel abstract at first, so keep one practical question in mind:
+
+What if two classes need the same behavior, but they should not share one parent class?
+
+That is the problem modules help solve.
+
 ## The Problem Inheritance Can't Solve
 
 Inheritance gives you one parent. But what if a class needs behaviors from multiple sources?
@@ -7,6 +15,8 @@ Inheritance gives you one parent. But what if a class needs behaviors from multi
 A `Duck` is an `Animal`. But it also `Swims`, `Flies`, and `Quacks`. If `Swimming`, `Flying`, and `Quacking` are all different classes, you can't inherit from all of them in Ruby (no multiple inheritance).
 
 Modules solve this. A module is a collection of methods you can **mix into** any class.
+
+In plain English: a module is reusable behavior you can attach where needed.
 
 ---
 
@@ -52,6 +62,8 @@ p.to_json    # => { "name": "Yosia", "age": 30 }
 ```
 
 `include` adds module methods as **instance methods**.
+
+That means objects of the class can call those methods as if they were defined in the class itself.
 
 ---
 
@@ -135,6 +147,8 @@ Post.new.reload      # instance method
 ```
 
 This pattern — `include` adding both instance AND class methods — is how Rails Concerns work.
+
+If that feels advanced, the beginner takeaway is simpler: modules let Ruby share behavior without forcing everything into one inheritance tree.
 
 ---
 

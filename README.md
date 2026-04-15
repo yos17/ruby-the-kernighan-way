@@ -39,6 +39,17 @@ Each chapter has:
 - **Exercises** — things to build yourself
 - **What you learned** — the key takeaways
 
+A good way to read this book is:
+
+1. first, ask what tool or program the chapter is building
+2. then identify the input and output
+3. then trace one tiny example by hand
+4. only after that, focus on the Ruby feature itself
+
+That order matters.
+
+Beginners often get lost when they try to understand every abstraction immediately. You do not need to understand every line on the first pass. You need to understand what problem the code is solving.
+
 ## Setup
 
 ```bash
@@ -55,3 +66,12 @@ That's all you need.
 Ruby was designed to make programmers happy. It achieves this by making the language adapt to you — not the other way around. By the end of this course, you'll understand how Ruby does that, and you'll know how to use it yourself.
 
 The best programs are small, clear, and do exactly what they say. That's true in C, in shell, and in Ruby.
+
+One beginner reminder is worth keeping in mind through the whole book:
+
+- strings are not numbers until you convert them
+- files are often just sources of strings and lines
+- arrays and hashes are how Ruby helps you organize data
+- methods, classes, and modules are ways to give structure to bigger programs
+
+If a chapter feels hard, come back to those four ideas. A lot of Ruby becomes easier when you reduce it to data going in, data changing shape, and results coming out.

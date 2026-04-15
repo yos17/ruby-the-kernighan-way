@@ -1,6 +1,22 @@
 # Chapter 1 — Getting Started
 
+This chapter does two jobs at once:
+
+- it introduces the absolute basics of Ruby
+- it gives you your first real command-line tool
+
+If you are new to Ruby, do not try to memorize everything here.
+Focus on one idea at a time:
+
+- how to run code
+- how to store values
+- how to read input
+- how to print output
+- how to make a tiny program do useful work
+
 ## Hello, Ruby
+
+Begin with the smallest possible example.
 
 The first program in every language:
 
@@ -43,6 +59,10 @@ Ruby is **interpreted** — there's no separate compile step. The program runs a
 ---
 
 ## Variables
+
+A variable is just a name for a value.
+
+If you already program in another language, this idea is familiar. Ruby just makes the syntax lighter.
 
 ```ruby
 name    = "Yosia"       # String
@@ -91,6 +111,16 @@ puts "Hello, #{name}!"      # puts = print + newline
 
 ## Your First Real Program: A Calculator
 
+Before reading the code, keep the mental model simple:
+
+- the user types text
+- Ruby reads that text as strings
+- the program converts strings into numbers
+- the program decides which operation to run
+- the result gets printed back out
+
+That is the whole shape of the chapter.
+
 ```ruby
 # calculator.rb — a simple calculator
 
@@ -132,7 +162,13 @@ Result: 50.0
 This is real Ruby. Notice:
 - `case/when` instead of `if/elsif/elsif`
 - `to_f` converts string to float
-- The result of `case` is a value (assigned to `result`)
+- the result of `case` is a value, not just a control-flow branch
+
+In plain English:
+- input comes in as text
+- `to_f` turns text into numbers
+- `case` picks the math operation
+- `puts` shows the answer
 
 ---
 

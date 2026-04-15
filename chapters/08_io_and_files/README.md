@@ -1,5 +1,15 @@
 # Chapter 8 — I/O and Files
 
+This chapter is more practical than it may first appear.
+
+A huge amount of scripting work is really just:
+
+- read a file
+- transform the contents
+- write a result somewhere else
+
+So file I/O is not side knowledge. It is central tool-building knowledge.
+
 ## Reading Files
 
 ```ruby
@@ -27,6 +37,10 @@ data = File.binread("image.png")
 ---
 
 ## Writing Files
+
+A helpful beginner question is: am I replacing the file, or adding to it?
+
+That one question usually tells you whether you want write mode or append mode.
 
 ```ruby
 # Write (creates or overwrites)
@@ -115,6 +129,8 @@ end  # directory automatically deleted after block
 ---
 
 ## Pathname — Object-Oriented File Paths
+
+If `File` functions feel a bit scattered, `Pathname` can feel cleaner because the path becomes an object you can ask questions of.
 
 ```ruby
 require 'pathname'

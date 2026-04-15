@@ -1,5 +1,15 @@
 # Chapter 3 — Control Flow
 
+Control flow decides which code runs and how many times it runs.
+
+If Chapter 2 was about values, this chapter is about decisions.
+
+The beginner-friendly way to think about it is:
+
+- `if` chooses between paths
+- loops repeat work
+- `case` is a cleaner way to match one value against several possibilities
+
 ## if / unless / elsif / else
 
 ```ruby
@@ -25,6 +35,8 @@ return if name.nil?
 
 **Everything in Ruby returns a value**, including `if`:
 
+That sounds abstract at first, but the practical meaning is simple: an `if` expression can produce a result, not just control what gets printed.
+
 ```ruby
 grade = if score >= 90 then "A"
          elsif score >= 80 then "B"
@@ -36,6 +48,8 @@ grade = if score >= 90 then "A"
 ---
 
 ## case / when
+
+`case` is one of the nicest Ruby tools for beginners because it often reads closer to plain English than a long `if/elsif/else` chain.
 
 ```ruby
 # Match a value
@@ -83,6 +97,10 @@ end
 ---
 
 ## Loops
+
+A loop means “do this again for each value” or “do this again while a condition is true.”
+
+If you already know another language, Ruby’s `each` is the most important loop to get comfortable with.
 
 ### times, upto, downto, step
 

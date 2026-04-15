@@ -1,5 +1,15 @@
 # Chapter 10 — Metaprogramming
 
+This chapter is where Ruby starts to feel magical.
+
+That is exciting, but it can also become confusing fast.
+
+The safest beginner mindset is:
+
+- metaprogramming is usually just automation for repeated code patterns
+- do not chase the magic first
+- first ask what repetitive problem the code is trying to remove
+
 ## What is Metaprogramming?
 
 Metaprogramming means **writing code that writes code**. In Ruby, you can:
@@ -9,6 +19,8 @@ Metaprogramming means **writing code that writes code**. In Ruby, you can:
 - Inspect and modify objects and classes while the program is running
 
 This is what makes Rails possible. When you write `belongs_to :user`, that's not a keyword — it's a method that *generates other methods* at class-definition time.
+
+In plain English: code is setting up more code for you automatically.
 
 Let's learn how.
 
@@ -78,6 +90,8 @@ controller.send(action_name)   # calls :index, :show, etc.
 ---
 
 ## 3. `define_method` — Create Methods Dynamically
+
+This is one of the key turning points of the chapter. If you understand why repeated methods can be generated instead of handwritten, the rest of the chapter becomes much easier to follow.
 
 Instead of writing 10 similar methods, generate them:
 

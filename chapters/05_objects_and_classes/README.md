@@ -1,5 +1,13 @@
 # Chapter 5 — Objects and Classes
 
+This is where Ruby starts to feel more like “program structure” and less like isolated expressions.
+
+A beginner-friendly way to think about objects is:
+
+- an object holds data
+- an object also knows what actions make sense for that data
+- a class is the pattern used to create those objects
+
 ## What is a Class?
 
 A class is a blueprint for objects. You define what data (attributes) and behavior (methods) objects of that type have.
@@ -28,6 +36,11 @@ puts rex    # => Rex (German Shepherd)  — calls to_s automatically
 ```
 
 `initialize` is called when you do `Dog.new(...)`. `@name` is an instance variable — each object has its own copy.
+
+In plain English:
+- `Dog` is the blueprint
+- `rex` and `spot` are actual objects made from that blueprint
+- each dog has its own name and breed
 
 ---
 
@@ -63,6 +76,10 @@ These are **class methods** that generate instance methods. By the end of the me
 ---
 
 ## A Real Class: BankAccount
+
+This example matters more than the `Dog` example because it has real state and real rules.
+
+That is when classes become easier to justify.
 
 ```ruby
 class BankAccount
@@ -124,6 +141,11 @@ Key ideas here:
 - `raise` throws exceptions (covered in Ch9)
 - `private` makes methods internal — callers can't call `account.record(...)`
 - `return self` enables **method chaining** — `account.deposit(100).withdraw(50)`
+
+If this feels like a jump, focus on the object story first:
+- the account has an owner and a balance
+- deposits and withdrawals change that balance
+- helper methods keep the code organized
 
 ---
 

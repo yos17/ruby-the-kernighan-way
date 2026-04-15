@@ -1,5 +1,14 @@
 # Chapter 12 — Gems and the Standard Library
 
+By this point, an easy beginner mistake is to assume every new problem needs a gem.
+
+Often it does not.
+
+This chapter matters because strong Ruby programmers learn to ask two questions in this order:
+
+1. is this already in the standard library?
+2. if not, which gem solves it well?
+
 ## The Standard Library — What's Already There
 
 Ruby ships with a rich standard library. You don't need gems for most common tasks.
@@ -64,6 +73,8 @@ end
 
 ## Gems — Third-Party Libraries
 
+A gem is just a packaged Ruby library someone else published for reuse.
+
 A gem is a packaged Ruby library. The gem ecosystem is huge.
 
 ```bash
@@ -94,6 +105,8 @@ bundle update httparty    # update one gem
 ---
 
 ## Essential Gems to Know
+
+Do not feel pressure to memorize this whole section. The main beginner goal is to understand the role gems play and to become comfortable installing and using a few common ones.
 
 ### HTTParty — Simple HTTP requests
 ```ruby

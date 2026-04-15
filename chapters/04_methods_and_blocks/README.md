@@ -1,5 +1,15 @@
 # Chapter 4 — Methods and Blocks
 
+This is one of the most important chapters in the book.
+
+Methods are how you name pieces of work.
+Blocks are one of the things that make Ruby feel like Ruby.
+
+If blocks feel strange at first, that is normal. Read the examples slowly and focus on this simple idea:
+
+- a method is reusable work
+- a block is extra behavior you hand into a method
+
 ## Defining Methods
 
 ```ruby
@@ -17,6 +27,8 @@ end
 ```
 
 The **last expression** in a method is its return value. You rarely write `return` explicitly — only when you want to exit early.
+
+In plain English: Ruby methods usually return whatever value the final line produces.
 
 ---
 
@@ -64,6 +76,13 @@ end
 ---
 
 ## Blocks — The Heart of Ruby
+
+A block is easiest to understand as “a chunk of code passed into a method.”
+
+If that still feels abstract, think of it this way:
+
+- the method controls the overall job
+- the block tells the method what custom behavior to run during that job
 
 A block is a chunk of code you pass to a method. It's one of Ruby's most distinctive features.
 
@@ -135,6 +154,8 @@ end
 ---
 
 ## Procs and Lambdas
+
+Do not worry if this section feels more advanced than the earlier block examples. The big beginner takeaway is just that Ruby can store reusable callable behavior in objects too.
 
 A **Proc** is a block stored in a variable:
 

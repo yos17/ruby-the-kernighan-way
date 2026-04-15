@@ -1,5 +1,11 @@
 # Chapter 9 — Error Handling
 
+This chapter is important because beginner programs often work only on the happy path.
+
+Real tools need to handle bad input, missing files, invalid data, and unexpected states.
+
+Error handling is how the program stays honest when things go wrong.
+
 ## Exceptions Are Objects
 
 In Ruby, exceptions are objects — instances of `Exception` or its subclasses. When something goes wrong, an exception is **raised** (thrown). You can **rescue** (catch) it and decide what to do.
@@ -23,9 +29,15 @@ Exception
 
 Always rescue `StandardError` or a specific subclass — never bare `Exception` (that catches system signals too).
 
+A good beginner rule is: rescue the most specific error you reasonably expect.
+
 ---
 
 ## raise and rescue
+
+In plain English:
+- `raise` means “something went wrong, stop normal flow here”
+- `rescue` means “if that specific kind of problem happens, handle it this way instead”
 
 ```ruby
 # raise an exception:

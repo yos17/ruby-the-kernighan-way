@@ -1,5 +1,15 @@
 # Chapter 2 — Types and Expressions
 
+This chapter can feel dense if you read it like a glossary.
+
+A better way to read it is:
+
+- first, notice what kind of value you are working with
+- second, ask what methods Ruby gives that value
+- third, try one tiny example in IRB
+
+Do not try to memorize every method. Learn the shape of the main value types first.
+
 ## Everything is an Object
 
 In Ruby, there are no primitive types. Everything — integers, strings, `true`, `nil` — is an object. Every object has methods.
@@ -26,6 +36,10 @@ This matters because there are no special rules for primitives. The same object 
 ---
 
 ## Numbers
+
+Numbers are one of the easiest places to see Ruby’s object model.
+
+Even a plain number like `42` can receive methods.
 
 ```ruby
 # Integers
@@ -58,6 +72,10 @@ This matters because there are no special rules for primitives. The same object 
 ```
 
 ⚠️ The `7 / 2 = 3` gotcha trips up everyone. If either operand is a float, you get float division.
+
+In plain English:
+- `7 / 2` means integer division, so the fractional part is dropped
+- `7.0 / 2` means floating-point division, so you get `3.5`
 
 ---
 
@@ -118,6 +136,11 @@ score = 98.5
 ---
 
 ## Symbols
+
+Beginners often get confused here, so keep the rule simple:
+
+- use strings for normal text
+- use symbols for names and identifiers
 
 Symbols are like strings but **immutable** and unique. Two symbols with the same name are literally the same object in memory.
 

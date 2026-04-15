@@ -1,5 +1,9 @@
 # Chapter 13 — Debugging
 
+This chapter is here because writing code and fixing code are both part of programming.
+
+Beginners often think debugging means “I failed.” Really, debugging means “now I am inspecting what the program actually did.”
+
 ## Why Debugging Matters
 
 `puts` debugging works — until it doesn't. When your program has 20 variables and the bug is in a method called from three different places, you need a real debugger. Ruby has excellent ones.
@@ -9,6 +13,8 @@ This chapter covers two approaches:
 - **VSCode + debug gem** — a visual debugger with breakpoints, stepping, and variable inspection
 
 We also cover **Pry** (a popular third-party REPL) and explain why `binding.irb` has replaced the old `pry` + `pry-byebug` combo.
+
+If you are new, start with `binding.irb`. It is the shortest path to understanding what your code is doing.
 
 ---
 
@@ -92,6 +98,8 @@ irb(main):004> continue    # run to next breakpoint or end
 When it hits the breakpoint the second time, you see Bob's values. Type `continue` again to finish.
 
 ### What `binding.irb` Actually Does
+
+This is the key beginner idea of the chapter: the program pauses, and you get to inspect the real state at that exact moment.
 
 `binding` captures the current scope — all local variables, `self`, the call stack. `.irb` opens an interactive REPL in that context. You're not simulating anything — you're running real Ruby inside your running program.
 
