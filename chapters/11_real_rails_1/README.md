@@ -1,10 +1,18 @@
 # Chapter 11 — Real Rails: Models, Controllers, Views
 
-You've built a tiny framework in Ch 10. Real Rails is the polished, battle-tested version of the same shape: a router, models with a query DSL, controllers that handle requests, views that render HTML. This chapter and the next walk you through building a complete blog application — posts, comments, authors, full CRUD. By the end of Ch 12 you'll have an app you'd be proud to deploy.
+You built the small version in Chapter 10. Now build the real one. This chapter starts a blog application with posts, comments, authors, and full CRUD. The point is not to admire Rails from a distance. The point is to watch the familiar pieces reappear in their production form.
 
-Because Rails generates a lot of files, this chapter is a *guided walkthrough*: you run commands, edit a few key files, and end up with a working app. The exercises at the end ask you to extend it.
+Because Rails generates a lot of files, this chapter is a guided walkthrough. Do not try to read every file Rails creates. Follow the ones that move the app forward.
 
-## Setup
+By the end of this chapter, the app will have:
+
+- a `Post` model with validations
+- `Author` and `Comment` associations
+- CRUD controllers and views
+- routes that read like the router you built last chapter
+- enough real Rails structure that Chapter 12 can add Hotwire, auth, jobs, and caching
+
+## Start a real app
 
 Rails 8 requires Ruby 3.2+. You should have Ruby 3.4 from Chapter 0.
 
@@ -25,7 +33,7 @@ bin/rails server
 
 Visit `http://localhost:3000` — the Rails welcome page.
 
-## What `rails new` made
+## Open the box
 
 ```
 blog/

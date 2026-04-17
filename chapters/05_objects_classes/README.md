@@ -362,7 +362,9 @@ Three shapes for "a thing with behavior," in the order you should reach for them
 
 Heuristic: if you find yourself writing `class Foo < Bar` and Bar has only one subclass, delete the inheritance and put the shared methods in a module. If you find yourself writing `attr_accessor` on a class with no behavior, switch to `Data.define`. Inheritance is the strongest coupling Ruby offers — earn it.
 
-## addr.rb
+Enough pieces. Put them to work.
+
+## First build: addr.rb
 
 An address book with two classes: `Person` (a value-ish object) and `AddressBook` (the collection).
 
@@ -441,7 +443,7 @@ What's new.
 
 (File: `examples/addr.rb`. Storage file is created at `examples/addr.json` on first run.)
 
-## shelter.rb
+## Second build: shelter.rb
 
 An animal shelter with a hierarchy: `Dog`, `Cat`, `Bird` all inherit from `Animal`.
 
@@ -527,7 +529,7 @@ What's new.
 
 (File: `examples/shelter.rb`.)
 
-## plugins.rb
+## Third build: plugins.rb
 
 A plugin loader: drop a `.rb` file in `plugins/`, it gets loaded and registered. Each plugin is a module that gets mixed into a host class.
 

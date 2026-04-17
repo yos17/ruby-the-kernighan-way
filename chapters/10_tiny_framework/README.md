@@ -1,6 +1,8 @@
 # Chapter 10 — A Tiny Web Framework
 
-This is the centerpiece chapter. Before you write your first Rails app, you build the parts that Rails is made of — by hand, from scratch, in less than 300 lines of Ruby. By the end you'll have:
+This is the centerpiece chapter. Before you let Rails generate anything for you, build the moving parts once by hand. Not because you would ship this framework, but because the polished one makes more sense after you have seen the rough one.
+
+By the end of the chapter you will have:
 
 - `tiny_rack.rb` — a hello-world app speaking the Rack protocol
 - `tiny_router.rb` — a Sinatra-style routing DSL on top of Rack
@@ -8,7 +10,9 @@ This is the centerpiece chapter. Before you write your first Rails app, you buil
 - `tiny_renderer.rb` — an ERB-based template renderer
 - `tiny_framework.rb` — composes all four into a working mini-Rails
 
-When you open `rails new` next chapter, the directories and files won't be magic. You'll think *"oh, that's the polished version of what I built last week."*
+Keep one terminal for the server and another for `curl`. This chapter is easiest to read when every new file can answer a real request a minute after you write it.
+
+When you open `rails new` next chapter, the directories and files should stop looking magical. They should look familiar.
 
 ## What's a web request, mechanically?
 
