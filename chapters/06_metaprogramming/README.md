@@ -1,6 +1,8 @@
 # Chapter 6 — Metaprogramming
 
-Metaprogramming is writing code that writes code. In Ruby, you can define methods at runtime, intercept calls to methods that don't exist, reopen any class to add to it, and run code in the context of *another* object. Three programs: `mini_attr.rb` (your own family of `attr_*` methods), `flex.rb` (a flexible-attribute object using `method_missing`), and `mini_dsl.rb` (a route-declaration DSL via `class_eval` and the `inherited` hook). The same techniques are how Rails works.
+Metaprogramming is where Ruby starts feeling like a language for building languages. That can be exhilarating or unreadable. This chapter keeps it on a short leash: one attribute generator, one flexible object, one routing DSL.
+
+The reading rule here is simple. Do not treat any of these techniques as tricks to sprinkle everywhere. Read each one as an answer to a narrow problem: a family of methods, a family of attribute names, a family of route declarations.
 
 ## Open classes
 
@@ -191,7 +193,7 @@ These power most "auto-register yourself" patterns. Rails uses `inherited` to tr
 
 ## prepend and the singleton class
 
-`include` puts a module in the lookup chain *above* the class. `prepend` puts it *below* — meaning the module's methods take precedence, and `super` inside them calls the class's version. Useful for wrapping methods:
+`include` inserts a module into the lookup chain after the class. `prepend` inserts it before the class, so the module's methods run first and can delegate with `super`. That makes `prepend` useful for wrapping methods:
 
 ```ruby
 module Timing
@@ -409,7 +411,7 @@ This is the same pattern Rails uses in `config/routes.rb`. The `Rails.applicatio
 
 ## When NOT to use metaprogramming
 
-Metaprogramming buys leverage; it spends clarity. The trade is worth it less often than enthusiasts pretend. Three rules of thumb.
+Metaprogramming buys leverage and spends clarity. The trade is worth it less often than enthusiasts pretend. Three rules of thumb.
 
 If deleting one `define_method` loop and writing three explicit methods would make the file shorter to read (not to type) — write the three. The reader does not benefit from your loop.
 

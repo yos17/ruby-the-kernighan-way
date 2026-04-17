@@ -1,6 +1,8 @@
 # Chapter 7 — Files, Errors, the Outside World
 
-Programs interact with the world: they read files, parse data, talk to other programs over the network, and they have to handle the world being broken. This chapter covers files (read, write, paths), structured data (JSON, CSV), exceptions and recovery, environment variables, simple HTTP, and `binding.irb` debugging. Three programs: `logwatch.rb` (tail a file and react to patterns), `config_loader.rb` (a layered config from defaults + JSON file + ENV), and `tiny_http_client.rb` (a small HTTP client for JSON APIs).
+The previous chapters stayed mostly inside Ruby. This chapter is about the places where programs touch the world and the world pushes back. Files are missing. JSON is malformed. Servers time out. Environment variables are unset. That is ordinary programming, not an edge case.
+
+The three programs set the pace: `logwatch.rb` reads a changing file, `config_loader.rb` layers defaults with outside input, and `tiny_http_client.rb` talks to a remote server without pretending the network is polite.
 
 ## Reading files
 

@@ -1,14 +1,14 @@
 # Ruby & Rails — The Kernighan Way
 
-A tutorial book that takes a beginner from "I just installed Ruby" to "I can build a tiny Rails framework, ship a gem, and deploy a real Rails app." Designed for the reader who wants to *understand* Ruby — not just use Rails.
+This book teaches Ruby the way K&R teaches C: by building small tools that do real work. You start with `hello.rb` and a calculator. You end with a tiny Rails-like framework, a published gem, and a deployed Rails app.
 
-The book is for someone comfortable using a computer who has not programmed before. It is not for someone who already writes Ruby comfortably; for that, the existing 13-chapter draft preserved in [`archive/`](./archive/) is more useful.
+It is written for a reader who is comfortable using a computer and new to programming. It is not a reference manual and it is not a Rails cookbook. It is a sequence of programs. If you already write Ruby comfortably, the preserved draft in [`archive/`](./archive/) is likely the better reference.
 
-## Why "Kernighan Way"
+## Why This Shape
 
 Brian Kernighan's books teach by building. You learn C in *K&R* by writing tools — `wc`, `grep`, a calculator, a text formatter. You learn Unix in *The UNIX Programming Environment* by writing shell pipelines and a calculator language. The programs accumulate; later programs use earlier ones.
 
-This book follows the same shape. Every chapter builds 2-3 working programs. The TOC reads like a list of files in `bin/`, not a list of language features.
+This book follows the same shape. Every chapter builds two or three working programs. The table of contents should feel like a list of files in `bin/`, not a list of language features.
 
 ## What you'll build
 
@@ -29,12 +29,16 @@ This book follows the same shape. Every chapter builds 2-3 working programs. The
 | 12 | The same blog with Hotwire, forms, auth, jobs, caching |
 | 13 | Deploy your blog to a real host with Kamal |
 
-A good way to read this book is:
+## How to read
 
-1. first, ask what tool or program the chapter is building
-2. then identify the input and output
-3. then trace one tiny example by hand
-4. only after that, focus on the Ruby feature itself
+Keep a terminal open while you read. Type the programs yourself. Run them after every small change.
+
+When a chapter feels dense, use this order:
+
+1. ask what tool the chapter is building
+2. identify the input and the output
+3. trace one tiny example by hand
+4. only then focus on the Ruby feature itself
 
 That order matters.
 
@@ -48,9 +52,9 @@ ruby --version    # Ruby 3.4 or newer
 
 If you don't have Ruby, start with [Chapter 0](./chapters/00_setup/).
 
-## How to read
+## Book Layout
 
-Read sequentially. Each chapter assumes the previous ones. Type the example programs yourself — don't just read them. Try the exercises before looking at the solutions.
+Read sequentially. Each chapter assumes the previous ones. Try the exercises before looking at the solutions.
 
 The book uses `chapters/<NN>_<name>/` for each chapter:
 
@@ -63,7 +67,7 @@ chapters/01_tutorial/
     └── solutions/     # solutions, kept separate so you actually try
 ```
 
-## Four ideas to keep coming back to
+## Four ideas to keep returning to
 
 The best programs are small, clear, and do exactly what they say. That's true in C, in shell, and in Ruby. When a chapter feels hard, come back to these four ideas:
 
@@ -76,7 +80,7 @@ A lot of Ruby becomes easier when you reduce it to *data going in, data changing
 
 ## Status
 
-All 14 chapters written. The original 13-chapter draft is preserved in [`archive/`](./archive/) for reference. Chapters 11-13 are guided walkthroughs (you run `rails new`, generators, etc.) rather than committed apps; everything before is verified runnable Ruby.
+All 14 chapters are drafted. The original 13-chapter book is preserved in [`archive/`](./archive/) for reference. Chapters 11-13 are guided walkthroughs rather than committed apps; everything before them is verified runnable Ruby.
 
 - **Ch 0 — Setup** ✅
 - **Ch 1 — A Tutorial Introduction** ✅
@@ -97,4 +101,4 @@ Design spec: [`docs/superpowers/specs/2026-04-16-ruby-rails-kernighan-curriculum
 
 ## License
 
-(to be decided)
+TBD

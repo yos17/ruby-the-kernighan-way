@@ -1,25 +1,37 @@
 # Chapter 12 — Real Rails: Hotwire, Forms, Auth, Jobs, Caching
 
-You have a working blog from Ch 11. This chapter adds the Rails 8 / DHH-style stack: Hotwire (for live, JavaScript-free interactivity), proper forms with Active Storage uploads, built-in authentication, ActionMailer, Solid Queue (background jobs), and Solid Cache. By the end the blog will *feel* like a real production app.
+Chapter 11 gave you a working blog. This chapter makes it feel like an application you could keep. We add five things: pages that update without full reloads, a little browser-side behavior, file uploads, authentication, and the background plumbing that keeps requests fast.
 
-## Hotwire — Turbo + Stimulus
+The order matters. First make the interface feel responsive. Then protect write actions. Then move slow work out of the request. Then cache what is expensive.
 
-Hotwire is two libraries that ship with Rails 8:
+## The build
 
-- **Turbo** — intercepts every link click and form submission, fetches the response over the wire, swaps the changed parts into the DOM. No page reloads. Zero JS code from you.
-- **Stimulus** — a tiny JavaScript framework for sprinkling behavior on top of HTML. You write small controllers; Stimulus wires them up by data attributes.
+By the end of the chapter, the blog will have:
 
-The DHH thesis: *most apps don't need a SPA*. With Turbo handling navigation and partial updates, and Stimulus for the small bits of client-side behavior, you can build modern-feeling apps in pure Rails.
+- comments that appear without a full page reload
+- an in-page toggle built with Stimulus
+- cover image uploads for posts
+- sign-in and password reset
+- mail sent through jobs
+- cached fragments for the expensive parts
+
+## Hotwire — make the blog feel live
+
+Hotwire is the combination of Turbo and Stimulus. Turbo handles most of the page updates. Stimulus handles the small pieces of behavior that are easier in JavaScript than in HTML alone.
 
 ### Turbo Drive
 
-Out of the box, every link and form submission in your blog is intercepted by Turbo Drive. The response is rendered, the body is swapped, the URL is updated — without a full page reload. Try it: navigate around your blog. Notice the page never flashes white. That's Turbo Drive.
+Turbo Drive is the default. Links and forms are intercepted, the server sends back HTML, and Turbo swaps the page content without a full reload. You can see it immediately: click around the blog and notice that navigation feels faster even though the server still renders every page.
 
-To opt out for a specific link: `<%= link_to "Logout", logout_path, data: { turbo: false } %>`.
+To opt out for one link or form, add `data: { turbo: false }`.
+
+```erb
+<%= link_to "Manual", "/manual.pdf", data: { turbo: false } %>
+```
 
 ### Turbo Frames
 
-A Turbo Frame is a section of the page that updates independently. Wrap any region in `<turbo-frame>`:
+Use a Turbo Frame when one region of a page should update on its own. Editing a post inline is a good first use.
 
 ```erb
 <turbo-frame id="post_<%= post.id %>">
@@ -28,9 +40,7 @@ A Turbo Frame is a section of the page that updates independently. Wrap any regi
 </turbo-frame>
 ```
 
-When the user clicks Edit, Turbo fetches `/posts/123/edit`, finds the matching `<turbo-frame id="post_123">` in the response, and swaps just that frame. The rest of the page stays put.
-
-Edit `app/views/posts/edit.html.erb` to wrap its form in a matching frame:
+Then return a matching frame from the edit view:
 
 ```erb
 <turbo-frame id="post_<%= @post.id %>">
@@ -38,11 +48,11 @@ Edit `app/views/posts/edit.html.erb` to wrap its form in a matching frame:
 </turbo-frame>
 ```
 
-Now editing happens in place.
+Now the edit form appears in place instead of replacing the whole page.
 
 ### Turbo Streams
 
-Streams update parts of the page in response to a server-side event — append a comment, remove a deleted post, replace a section. The server returns a `.turbo_stream` response:
+Use Turbo Streams when one action should update several parts of the page. Comments are the obvious example: append the new comment to the list and reset the form.
 
 ```erb
 <%# app/views/comments/create.turbo_stream.erb %>
@@ -50,35 +60,28 @@ Streams update parts of the page in response to a server-side event — append a
 <%= turbo_stream.replace "comment_form", partial: "comments/form", locals: { comment: Comment.new } %>
 ```
 
-In `CommentsController`:
+In the controller:
 
 ```ruby
 def create
   @comment = @post.comments.build(comment_params)
+
   if @comment.save
     respond_to do |format|
-      format.turbo_stream     # renders create.turbo_stream.erb
-      format.html { redirect_to @post }
+      format.turbo_stream
+      format.html { redirect_to @post, notice: "Comment added." }
     end
+  else
+    render :new, status: :unprocessable_entity
   end
 end
 ```
 
-When the user submits the comment form, Turbo sends an Accept header asking for the stream response. The HTML page updates without a full reload — comment appears at the bottom, the form clears. Magic at first; mechanical once you see the wire format.
+The important detail is the failure case. If validation fails, return `status: :unprocessable_entity`. Without it, Turbo treats the response as success and the user gets no useful feedback.
 
-### Turbo Streams over WebSockets (broadcasts)
+### Broadcasts
 
-The same stream format works *across users* via WebSockets. In `app/models/post.rb`:
-
-```ruby
-class Post < ApplicationRecord
-  broadcasts_to ->(post) { "posts" }, inserts_by: :prepend
-end
-```
-
-Every time a Post is created/updated/destroyed, Rails broadcasts a Turbo Stream over the `posts` channel. Any browser subscribed to that channel updates in real time.
-
-In `app/views/posts/index.html.erb`:
+Turbo Streams also work across browser tabs and across users. If the posts index should update when a new post is published, subscribe the page:
 
 ```erb
 <%= turbo_stream_from "posts" %>
@@ -87,19 +90,25 @@ In `app/views/posts/index.html.erb`:
 </div>
 ```
 
-Open two browser tabs. Create a post in one. Watch it appear in the other.
+Then broadcast from the model:
 
-This is *Solid Cable* — Rails 8's replacement for Redis-backed Action Cable. No Redis needed; the broadcasts ride on your database.
+```ruby
+class Post < ApplicationRecord
+  broadcasts_to ->(_post) { "posts" }, inserts_by: :prepend
+end
+```
+
+Create a post in one tab. It appears in the other. The behavior is no longer mysterious once you have seen the stream template and the subscription side by side.
 
 ### Stimulus
 
-Stimulus controllers attach behavior to HTML via data attributes. Generate one:
+Turbo gets you far without writing JavaScript. Stimulus covers the cases where a few lines of JavaScript are still the cleanest answer.
+
+Generate a controller:
 
 ```bash
 bin/rails generate stimulus toggle
 ```
-
-Edit `app/javascript/controllers/toggle_controller.js`:
 
 ```javascript
 import { Controller } from "@hotwired/stimulus"
@@ -113,7 +122,7 @@ export default class extends Controller {
 }
 ```
 
-Use it:
+Attach it in the view:
 
 ```erb
 <div data-controller="toggle">
@@ -124,11 +133,11 @@ Use it:
 </div>
 ```
 
-That's the entire Stimulus model. No build step beyond what Rails 8 ships. You write maybe ten lines of JS for a typical app.
+That is the whole Stimulus model: a small controller, named targets, and actions wired by data attributes.
 
 ## Forms
 
-Rails 7+ uses `form_with`:
+`form_with` is the standard form helper. It chooses the route, HTTP method, field names, and CSRF token automatically from the model object you pass in.
 
 ```erb
 <%= form_with model: @post do |f| %>
@@ -139,12 +148,7 @@ Rails 7+ uses `form_with`:
 <% end %>
 ```
 
-`form_with model: @post`:
-- Picks `POST /posts` for new records, `PATCH /posts/:id` for existing
-- Generates field names like `post[title]` (matching strong params)
-- Includes the CSRF token automatically
-
-Display errors:
+Show validation errors near the form instead of making the user guess:
 
 ```erb
 <% if @post.errors.any? %>
@@ -156,16 +160,18 @@ Display errors:
 <% end %>
 ```
 
-## Active Storage uploads
+The form helper is doing more work than it first appears to: it lines up the generated field names with strong params and keeps the request safe by including the authenticity token.
 
-For file uploads (e.g., post cover images):
+## Active Storage — upload cover images
+
+For file uploads, install Active Storage:
 
 ```bash
 bin/rails active_storage:install
 bin/rails db:migrate
 ```
 
-In `app/models/post.rb`:
+Attach one image to each post:
 
 ```ruby
 class Post < ApplicationRecord
@@ -173,13 +179,13 @@ class Post < ApplicationRecord
 end
 ```
 
-In the form:
+Add the file field to the form:
 
 ```erb
 <%= f.file_field :cover_image %>
 ```
 
-In strong params:
+Permit it in strong params:
 
 ```ruby
 def post_params
@@ -187,7 +193,7 @@ def post_params
 end
 ```
 
-In the view:
+Render it in the view:
 
 ```erb
 <% if @post.cover_image.attached? %>
@@ -195,27 +201,18 @@ In the view:
 <% end %>
 ```
 
-By default Active Storage stores files locally (`storage/`). For production switch to S3 or another cloud storage in `config/storage.yml`.
+Development stores files locally under `storage/`. In production, switch to S3 or another service when local disk stops being enough.
 
-## Auth (Rails 8 built-in)
+## Authentication — protect write actions
 
-Rails 8 includes a built-in authentication generator. No Devise needed.
+Rails 8 ships with an authentication generator. It gives you sign-in and password reset. It does not build a public sign-up flow for you.
 
 ```bash
 bin/rails generate authentication
 bin/rails db:migrate
 ```
 
-This creates:
-
-- `User` model with `has_secure_password`
-- `Session` model (for "remember me")
-- `SessionsController` (login/logout)
-- `RegistrationsController` (signup)
-- `PasswordsController` (forgot/reset)
-- Helpers: `authenticated?`, `current_user`, `require_authentication`
-
-Edit `app/controllers/application_controller.rb`:
+The generator adds models, controllers, views, routes, and mailers for the basic authentication flow. Include the concern in `ApplicationController`:
 
 ```ruby
 class ApplicationController < ActionController::Base
@@ -223,40 +220,31 @@ class ApplicationController < ActionController::Base
 end
 ```
 
-Skip auth where needed:
+Then protect the write actions on posts while keeping the public pages open:
 
 ```ruby
-class HomeController < ApplicationController
-  allow_unauthenticated_access only: %i[index]
+class PostsController < ApplicationController
+  allow_unauthenticated_access only: %i[index show]
 end
 ```
 
-Wire `current_user` into your blog:
+For the chapter build, creating a user in the console is enough:
 
 ```ruby
-# app/models/post.rb
-class Post < ApplicationRecord
-  belongs_to :user      # was :author — rename or add a User belongs_to
-end
-
-# app/controllers/posts_controller.rb
-def create
-  @post = current_user.posts.build(post_params)
-  ...
-end
+User.create!(email_address: "you@example.com", password: "secret123")
 ```
 
-That's it — auth is now real. Users sign up, log in, log out, reset passwords. The default views are barebones HTML; customize them.
+Then sign in at `/session/new`.
 
-## ActionMailer
+If you want public registration, wire it yourself after the generator run. That matches the real shape of most apps: sign-in is standard; sign-up is application-specific.
 
-Send email from Rails:
+## Action Mailer — send a welcome email
+
+Generate a mailer:
 
 ```bash
 bin/rails generate mailer Welcome
 ```
-
-Creates `app/mailers/welcome_mailer.rb`:
 
 ```ruby
 class WelcomeMailer < ApplicationMailer
@@ -267,74 +255,63 @@ class WelcomeMailer < ApplicationMailer
 end
 ```
 
-Plus `app/views/welcome_mailer/greet.html.erb` and `greet.text.erb` (HTML and plain-text versions).
-
-Send it (synchronously):
+Send it immediately:
 
 ```ruby
 WelcomeMailer.greet(user).deliver_now
 ```
 
-Or queue it (next section):
+Or queue it:
 
 ```ruby
 WelcomeMailer.greet(user).deliver_later
 ```
 
-In development, Rails uses `letter_opener` if installed, or `:test` (just records mail without sending). In production, configure `config.action_mailer.smtp_settings` or use a service like SendGrid.
+Use `deliver_later` for user-facing requests. The request should return before the SMTP conversation begins.
 
-## Background jobs (Solid Queue)
+## Background jobs — move slow work out of the request
 
-Rails 8 ships with Solid Queue — a database-backed job queue. No Redis, no separate worker daemon to install (it runs as part of the Rails app process).
-
-In `Gemfile` (already there from `rails new`):
+Rails 8 uses Solid Queue as the default durable job backend in production. If you want local development to behave the same way, configure it there too and prepare the queue database:
 
 ```ruby
-gem "solid_queue"
+# config/environments/development.rb
+config.active_job.queue_adapter = :solid_queue
+config.solid_queue.connects_to = { database: { writing: :queue } }
+```
+
+```bash
+bin/rails db:prepare
+bin/jobs start
 ```
 
 Generate a job:
 
 ```bash
-bin/rails generate job DigestEmail
+bin/rails generate job WelcomeEmail
 ```
 
-`app/jobs/digest_email_job.rb`:
-
 ```ruby
-class DigestEmailJob < ApplicationJob
+class WelcomeEmailJob < ApplicationJob
   queue_as :default
 
   def perform(user)
-    posts = Post.where(author_id: user.id).where("created_at > ?", 1.week.ago)
-    DigestMailer.with(user: user, posts: posts).digest.deliver_now
+    WelcomeMailer.greet(user).deliver_now
   end
 end
 ```
 
-Enqueue:
+Enqueue it:
 
 ```ruby
-DigestEmailJob.perform_later(user)
-DigestEmailJob.set(wait: 1.hour).perform_later(user)
-DigestEmailJob.set(wait_until: Time.current.tomorrow).perform_later(user)
+WelcomeEmailJob.perform_later(user)
+WelcomeEmailJob.set(wait: 1.hour).perform_later(user)
 ```
 
-To run jobs in development:
+Jobs still need a worker process. Rails gives you that process with `bin/jobs start`; you do not need Redis or a separate queueing product just to get started.
 
-```bash
-bin/jobs
-```
+## Caching — keep the expensive parts warm
 
-## Caching (Solid Cache)
-
-Rails 8 ships Solid Cache too — a database-backed cache store. Configure in `config/environments/production.rb`:
-
-```ruby
-config.cache_store = :solid_cache_store
-```
-
-Use:
+Rails 8 enables Solid Cache by default. It is a database-backed cache store, which is a good fit for the small-application shape this book has been building toward.
 
 ```ruby
 Rails.cache.fetch("expensive_query", expires_in: 1.hour) do
@@ -342,11 +319,11 @@ Rails.cache.fetch("expensive_query", expires_in: 1.hour) do
 end
 ```
 
-The block runs on first call; subsequent calls return the cached value until it expires.
+That is cache-aside: compute once, reuse until expiry.
 
 ### Fragment caching
 
-Cache a piece of a view:
+Cache a rendered piece of a page:
 
 ```erb
 <% cache @post do %>
@@ -354,11 +331,11 @@ Cache a piece of a view:
 <% end %>
 ```
 
-The cache key is auto-derived from `@post` — cache version, timestamps, partial name. When the post is updated, `cache_version` changes, the key changes, the cache misses, the new version renders.
+The key tracks the post version, so an updated post invalidates the cached fragment naturally.
 
 ### Russian doll caching
 
-Nest cache calls. Inner caches stay valid even when the outer cache misses:
+Nest cache calls when a large page contains many smaller stable pieces:
 
 ```erb
 <% cache @post do %>
@@ -371,87 +348,60 @@ Nest cache calls. Inner caches stay valid even when the outer cache misses:
 <% end %>
 ```
 
-Adding a comment invalidates the post's outer cache, but each existing comment's inner cache stays warm. Re-render is fast.
+If one comment changes, only that fragment goes cold. The rest stay warm.
 
 ## Common pitfalls
 
-- **Turbo Stream returning HTML status 200 when validation fails.** A failed `@comment.save` should re-render the form with `status: :unprocessable_entity`. Without that status, Turbo treats the response as success and the user sees no errors. The pattern:
-
-  ```ruby
-  def create
-    @comment = @post.comments.build(comment_params)
-    if @comment.save
-      respond_to { |f| f.turbo_stream; f.html { redirect_to @post } }
-    else
-      render :new, status: :unprocessable_entity
-    end
-  end
-  ```
-
-- **Session vs cookie confusion.** `session[:user_id]` writes to the session store (server-trusted, signed). `cookies[:foo]` writes a raw cookie the user can read. `cookies.signed[:foo]` and `cookies.encrypted[:foo]` are the safe forms when you need a real cookie. Auth tokens go in `session` or `cookies.signed`, never in `cookies` directly.
-- **Auth not enforcing CSRF on JSON endpoints.** `protect_from_forgery with: :null_session` in older code skips CSRF for API calls. Rails 8 defaults are stricter; don't relax them just because a JSON request fails. Send the CSRF token from your client instead.
-- **`deliver_now` blocking the request.** `WelcomeMailer.greet(user).deliver_now` runs the SMTP call in the request thread. The user waits for it. Use `deliver_later` for any user-facing send; `deliver_now` belongs in tests and rake tasks.
-- **Cache keys missing `cache_version` causing stale data.** `Rails.cache.fetch("posts/index") { Post.all.to_a }` never invalidates. Pass the model so the key auto-includes `updated_at`: `cache @post`, or use `Post.maximum(:updated_at)` in the key. When in doubt, render and check the log for `Read fragment` vs `Write fragment`.
-- **Active Storage URLs expiring.** `url_for(post.cover_image)` returns a signed URL that expires (5 minutes by default). Don't paste it into emails or RSS feeds. Use `rails_blob_path(post.cover_image, only_path: true)` for a stable URL through your app, or set a longer expiry in `config.active_storage.urls_expire_in`.
+- **Turbo failure responses without `422`.** Validation errors need `status: :unprocessable_entity` or the browser gets a successful response with no useful state change.
+- **Treating the auth generator as a full user system.** It gives sign-in and reset-password flow. Public registration is still your code.
+- **Using `deliver_now` in the request path.** The user waits on the mail provider.
+- **Forgetting the worker process.** `perform_later` enqueues work; nothing runs until `bin/jobs start` is running somewhere.
+- **Hand-made cache keys that never expire.** `Rails.cache.fetch("posts/index")` stays stale unless you version it yourself.
+- **Dropping signed Active Storage URLs into long-lived places.** For emails or feeds, prefer URLs routed through your app instead of short-lived direct URLs.
 
 ## Security checklist
 
-Before you point a domain at this app, walk this list. Every item is a real way Rails apps get owned.
+Before you put a domain on the app, verify these:
 
-- **CSRF on.** `protect_from_forgery with: :exception` is the Rails 8 default. Don't disable it. Forms made with `form_with` include the token automatically.
-- **Parameter wrapping for JSON.** `wrap_parameters format: [:json]` (default) wraps top-level JSON params under the model name so strong params work the same for HTML and JSON.
-- **Mass assignment closed via strong params.** `params.expect(post: [:title, :body])` (Rails 8) or `params.require(:post).permit(:title, :body)`. Never pass raw `params` to `update` or `create`.
-- **SQL injection.** Always parameterize: `Post.where("title LIKE ?", "%#{q}%")`. Never `Post.where("title LIKE '%#{q}%'")` — that's a direct hole. The `?` placeholder is the rule.
-- **XSS.** ERB escapes by default: `<%= user.name %>` is safe. `<%= raw user.name %>` and `user.name.html_safe` are not. Treat both as red flags — search your codebase for them and justify each one.
-- **Session secret rotation.** `bin/rails credentials:edit` shows `secret_key_base`. Rotate it if it ever leaks; old sessions become invalid (users get logged out, which is what you want).
-- **Password reset token TTL.** The Rails 8 auth generator sets a 15-minute window on reset tokens. Don't extend it. Short TTLs limit damage from a stolen email.
-- **Rate limiting.** Add `rack-attack` for login throttling and per-IP request caps:
-
-  ```ruby
-  # config/initializers/rack_attack.rb
-  Rack::Attack.throttle("logins/ip", limit: 5, period: 20.seconds) do |req|
-    req.ip if req.path == "/session" && req.post?
-  end
-  ```
-
-- **HTTPS via `force_ssl`.** `config.force_ssl = true` in `production.rb` redirects http to https, sets HSTS, and marks cookies secure. Kamal's proxy terminates TLS for you; this flag tells Rails to insist on it.
+- **CSRF is still on.** `form_with` includes the token automatically; do not disable forgery protection to make one broken request pass.
+- **Strong params are tight.** `params.expect(post: [...])` or `permit` only the fields you actually want writable.
+- **Queries are parameterized.** `Post.where("title LIKE ?", "%#{q}%")`, never string interpolation into SQL.
+- **ERB escaping stays on.** Treat `raw` and `html_safe` as suspicious until proven necessary.
+- **`force_ssl` is enabled in production.** Cookies and redirects should assume HTTPS from day one.
+- **Password reset links stay short-lived.** The generated authentication flow uses a short token lifetime; keep it that way.
 
 ## What you learned
 
 | Concept | Key point |
 |---|---|
-| Turbo Drive | every link/form is intercepted, no full reload |
-| `<turbo-frame>` | independent updateable region |
-| `respond_to { format.turbo_stream }` | server returns stream actions |
-| `broadcasts_to` | server-pushed updates over WebSockets (Solid Cable) |
-| Stimulus controllers | data-attribute-driven JS, minimal code |
-| `form_with model:` | one form helper for new and edit |
-| Active Storage + `has_one_attached` | file uploads, with `cover_image.attached?` |
-| `bin/rails generate authentication` | full auth out of the box, no Devise |
-| `current_user`, `authenticated?` | helpers from the auth concern |
-| `WelcomeMailer.greet(user).deliver_later` | async email through ActiveJob |
-| `bin/jobs` | run Solid Queue's worker |
-| `Rails.cache.fetch(key, expires_in:) { ... }` | cache aside |
-| `<% cache @post do %>` | fragment caching with auto-derived keys |
-| Russian doll caching | nested caches stay warm |
+| Turbo Drive | page navigation stays server-rendered but feels faster |
+| Turbo Frames | one region can update without replacing the whole page |
+| Turbo Streams | one action can update several regions at once |
+| Stimulus | small JavaScript behavior lives beside the HTML |
+| `form_with model:` | route, method, names, and CSRF line up automatically |
+| Active Storage | uploads attach to models with a small API |
+| `bin/rails generate authentication` | sign-in and password reset arrive quickly |
+| `deliver_later` | mail belongs in a job, not in the request path |
+| `bin/jobs start` | queued work needs a worker process |
+| Fragment caching | cache rendered view pieces, not just raw values |
 
 ## Going deeper
 
-- The Hotwire docs at `https://turbo.hotwired.dev`. Read the Turbo handbook end to end; it's short and the wire-format details matter when something doesn't update.
-- The Stimulus handbook at `https://stimulus.hotwired.dev/handbook/introduction`. Same story — small, finishable in an evening.
-- *Modern Front-End Development for Rails* (2nd ed.) by Noel Rappin. The book on Hotwire + Stimulus + import maps in Rails 7/8.
-- Read the `solid_queue` source on GitHub. It's a small gem (a few thousand lines of Ruby) that shows what a database-backed job queue looks like under the hood. After Ch 6 + 10, you can read most of it.
+- Read the Turbo handbook: https://turbo.hotwired.dev
+- Read the Stimulus handbook: https://stimulus.hotwired.dev/handbook/introduction
+- Read the Rails security guide section on the authentication generator: https://guides.rubyonrails.org/security.html
+- Read the Active Job guide sections on Solid Queue: https://guides.rubyonrails.org/active_job_basics.html
 
 ## Exercises
 
 1. **Hotwire-ify comments**: convert your comment form (Ch 11 ex 1) to use Turbo Streams. Posting a comment appends it to the list and clears the form, all without a page reload. Starter: `exercises/1_turbo_comments.md`.
 
-2. **Stimulus toggle**: write a Stimulus controller that toggles the visibility of a post's `body` (so the index can show titles only, click to expand). Starter: `exercises/2_stimulus_toggle.md`.
+2. **Stimulus toggle**: write a Stimulus controller that toggles the visibility of a post's `body` so the index can show titles only, then expand on click. Starter: `exercises/2_stimulus_toggle.md`.
 
-3. **Cover images**: add cover image uploads to posts with Active Storage. Display in the index. Starter: `exercises/3_cover_images.md`.
+3. **Cover images**: add cover image uploads to posts with Active Storage. Display them in the index. Starter: `exercises/3_cover_images.md`.
 
-4. **Auth wire-up**: install built-in auth, require it for new/create/edit/update/destroy on posts, allow unauthenticated for index/show. Starter: `exercises/4_auth.md`.
+4. **Auth wire-up**: install built-in auth, require it for new/create/edit/update/destroy on posts, allow unauthenticated access for index/show. Starter: `exercises/4_auth.md`.
 
 5. **Welcome email**: send a welcome email when a user registers. Use `deliver_later` so the request returns fast. Starter: `exercises/5_welcome_mail.md`.
 
-6. **Cache the index**: fragment-cache the posts index. Verify with the Rails log that subsequent loads are cached. Starter: `exercises/6_cache_index.md`.
+6. **Cache the index**: fragment-cache the posts index. Verify in the Rails log that subsequent loads are cached. Starter: `exercises/6_cache_index.md`.

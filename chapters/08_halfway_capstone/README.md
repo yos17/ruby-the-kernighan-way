@@ -1,32 +1,53 @@
 # Chapter 8 — Halfway Capstone: a Real CLI Tool
 
-You've got the Ruby toolkit. This chapter combines it all into one working program: `tasks`, a personal task tracker. It composes techniques from the previous seven chapters — file I/O and JSON (Ch 7), classes and Enumerable (Ch 5), method_missing-flavored dispatch (Ch 6), Enumerable methods (Ch 2-3), and exception handling (Ch 7). The goal is not a new concept, but the experience of writing a non-trivial program where everything you've learned earns its keep.
+The first seven chapters taught separate moves. This chapter makes them work together. The result is `tasks`, a small command-line task tracker that reads and writes a JSON file, searches, filters, prints summaries, and stays small enough to understand in one sitting.
+
+Nothing here is conceptually new. That is the point. A good capstone proves that the earlier chapters were not isolated tricks. They were parts.
 
 ## What `tasks` does
 
+Read these commands as the program's spec:
+
 ```
-$ tasks add "buy milk"                    # adds a task
-$ tasks add "study Ruby" --due 2026-04-30 # with due date
-$ tasks list                              # shows all open tasks
-$ tasks list --done                       # shows completed
-$ tasks done 2                            # mark task #2 done
-$ tasks search milk                       # filter by keyword
-$ tasks stats                             # summary
-$ tasks export csv > out.csv              # export
+$ tasks add "buy milk"                     # add a task
+$ tasks add "study Ruby" --due 2026-04-30 # add one with a due date
+$ tasks list                               # show open tasks
+$ tasks list --done                        # show completed tasks
+$ tasks done 2                             # mark task #2 done
+$ tasks search milk                        # filter by keyword
+$ tasks stats                              # print a summary
+$ tasks export csv > out.csv               # export
 ```
 
 Tasks live in a JSON file (`~/.tasks.json` by default, or wherever `TASKS_FILE` env var points).
 
-## The shape
+After the first two `add` commands, the file looks like:
 
-Two layers:
+```json
+[
+  {
+    "id": 1,
+    "text": "buy milk",
+    "due": null,
+    "done": false
+  },
+  {
+    "id": 2,
+    "text": "study Ruby",
+    "due": "2026-04-30",
+    "done": false
+  }
+]
+```
 
-- **`TaskStore`** — the data layer. Loads/saves JSON, knows about `Task` objects, provides `add`, `find`, `update`, `each`. Doesn't know about CLI.
-- **`CLI`** — the interface layer. Parses ARGV, dispatches to `TaskStore` methods, formats output. Doesn't know about JSON.
+Two parts keep the program readable:
 
-This is the *hexagonal* shape applied to a 200-line program. The CLI could be replaced by a web interface and the data layer wouldn't change.
+- `TaskStore` owns loading, saving, and updating tasks.
+- `CLI` owns `ARGV`, command dispatch, and terminal output.
 
-## Task — the value object
+That split is enough. The store should never call `puts`. The CLI should never reach into JSON parsing.
+
+## Task — one task in memory
 
 ```ruby
 Task = Data.define(:id, :text, :due, :done) do
@@ -35,13 +56,17 @@ Task = Data.define(:id, :text, :due, :done) do
 end
 ```
 
-`Data.define` (Ch 5) gives us value equality and immutability. The block adds methods. `to_h` for serialization, `overdue?` for the display.
+`Data.define` (Ch 5) gives a compact value object. A task is just data with two small bits of behavior attached: `to_h` for saving and `overdue?` for display.
 
-## TaskStore — the data layer
+`Data` instances are immutable. That matters later: when a task changes, we replace it with a new one instead of mutating it in place.
+
+## TaskStore — the part that touches disk
 
 ```ruby
 class TaskStore
   include Enumerable
+
+  class NotFound < StandardError; end
 
   def initialize(path)
     @path = path
@@ -62,14 +87,14 @@ class TaskStore
 
   def mark_done(id)
     task = find(id)
-    @tasks[@tasks.index(task)] = Task.new(**task.to_h, done: true)
+    idx = @tasks.index(task)
+    new_task = Task.new(**task.to_h.merge(done: true))
+    @tasks[idx] = new_task
     save
-    @tasks[@tasks.index { |t| t.id == id }]
+    new_task
   end
 
   def each(&block) = @tasks.each(&block)
-
-  class NotFound < StandardError; end
 
   private
 
@@ -89,13 +114,12 @@ end
 
 What to notice.
 
-`include Enumerable` + a `each` method — and we get `count`, `select`, `map`, `group_by`, `tally` for free. We use them in the CLI.
+- `include Enumerable` plus `each` buys us `select`, `reject`, `group_by`, `count`, and friends for free.
+- `load` and `save` are the only methods that touch the file. Keep it that way.
+- `mark_done` replaces one `Task` with another because `Data` instances are immutable.
+- `NotFound` lets the CLI print a friendly message instead of a backtrace.
 
-`@tasks[@tasks.index(task)] = Task.new(**task.to_h, done: true)` — Data instances are immutable, so we replace the task in the array with a new one. `**task.to_h` splats the hash as keyword arguments; the explicit `done: true` overrides the splatted value.
-
-`load` uses `rescue JSON::ParserError` — if the file is corrupted, warn and start fresh. This is intentionally permissive; for real apps you'd probably exit with a clear error.
-
-## CLI — the interface layer
+## CLI — the part that talks to the user
 
 ```ruby
 class CLI
@@ -163,7 +187,10 @@ class CLI
     case format
     when "csv"
       require "csv"
-      csv = CSV.generate { |c| c << %w[id text due done]; @store.each { |t| c << [t.id, t.text, t.due, t.done] } }
+      csv = CSV.generate do |c|
+        c << %w[id text due done]
+        @store.each { |t| c << [t.id, t.text, t.due, t.done] }
+      end
       @out.puts csv
     when "json"
       @out.puts JSON.pretty_generate(@store.map(&:to_h))
@@ -211,36 +238,25 @@ end
 
 What to notice.
 
-`public_send(cmd, args)` — the dispatcher. `cmd` is a method name on `CLI`. We could write a `case` statement; `public_send` is one line.
+- `COMMANDS` is an allowlist. Keep it. Without it, `public_send` would happily call methods you never meant to expose.
+- Each command is one small method. That is what keeps the file readable.
+- `format_task` keeps display choices in one place.
+- `parse_add_args` is crude, but readable, and good enough while there is only one flag.
 
-Per-command methods (`add`, `list`, `done`, ...) keep each command focused on one thing. Adding a command is one method definition + one entry in `COMMANDS`.
-
-`@store.select(&:done)`, `@store.group_by { |t| ... }` — Enumerable methods on the store, working because we `include Enumerable` and define `each`. Note how `select(&:done)` reads almost like English.
-
-`format_task` is a small helper — pull rendering out of the methods so each `list` / `search` shares the same formatting.
-
-The heredoc `<<~HELP` strips common leading whitespace — useful for multi-line help text.
-
-## tasks (the entry point)
+## The entry point
 
 ```ruby
-#!/usr/bin/env ruby
-# frozen_string_literal: true
-
-require "json"
-require "date"
-require_relative "task_store"
-require_relative "cli"
-
-store = TaskStore.new(ENV.fetch("TASKS_FILE", File.join(Dir.home, ".tasks.json")))
-CLI.new(store).run(ARGV)
+if __FILE__ == $PROGRAM_NAME
+  store = TaskStore.new(ENV.fetch("TASKS_FILE", File.join(Dir.home, ".tasks.json")))
+  CLI.new(store).run(ARGV)
+end
 ```
 
-Everything is wired here. The store path comes from `TASKS_FILE` env var, falling back to `~/.tasks.json`. Then we hand `ARGV` off to the CLI.
+`$PROGRAM_NAME` is the file Ruby started with. The guard means the code runs when you execute the file directly, not when some other file `require`s it.
 
-For convenience during development, the example version (`examples/tasks.rb`) inlines everything in one file.
+`ENV.fetch("TASKS_FILE", ...)` gives you a convenient override for testing. The example commands below use that so you do not scribble over a real task file while experimenting.
 
-(Files: `examples/tasks.rb` — a single-file version; you can run it directly.)
+The example version in `examples/tasks.rb` keeps everything in one file. That is deliberate. At this size, one file is still easier to read than four.
 
 ## Trying it
 
@@ -266,76 +282,45 @@ id,text,due,done
 
 ## Common pitfalls
 
-- **Tight coupling between data and CLI.** The spec separates `TaskStore` from `CLI` for a reason: the moment they share state, every CLI tweak risks corrupting the data layer, and the data layer can never be reused (web, API, test harness). If `TaskStore` ever takes an `ARGV` or calls `puts`, you've lost the seam. Keep the dependency one-way: CLI knows about the store; the store knows nothing about the CLI.
-- **Single-file scripts grow ugly fast.** `tasks.rb` is fine at 200 lines. By 500 it's a maze. Split into `task.rb`, `task_store.rb`, `cli.rb`, `tasks` (the entry point) the moment a second person needs to read it — or the moment you do, a month later.
-- **No tests means breaking changes are invisible.** A two-line refactor in `mark_done` can silently break `--done` filtering. Even three Minitest assertions catch the regression *before* you push. Exercise 6 is not optional.
-- **`eval` or `send` with user input.** `public_send(cmd, args)` is safe here because we whitelist via `COMMANDS.include?(cmd)`. Drop the whitelist and `tasks instance_eval ...` becomes a remote-execution hole. Never call `send`, `public_send`, or `eval` on a string the user typed without an explicit allowlist.
-- **Hand-rolled `--due` parsing.** `parse_add_args` works, but every new flag doubles its complexity. See the next section.
-
-## What I'd do differently in production
-
-- **JSON → SQLite.** A single JSON file rewritten on every change loses data on a crash mid-write and doesn't scale past a few hundred tasks. Swap `TaskStore` for one backed by `sqlite3` (or `sequel` / Active Record). The CLI doesn't change — that's the seam paying off.
-- **Tests from line one.** A `test/task_store_test.rb` driving a temp-file store. Run it with `ruby -Ilib test/task_store_test.rb`. Every CLI command gets one happy-path assertion.
-- **Config in the right place.** Hard-coding `~/.tasks.json` is rude on Linux. Honor `XDG_CONFIG_HOME`:
-
-  ```ruby
-  config_home = ENV.fetch("XDG_CONFIG_HOME", File.join(Dir.home, ".config"))
-  default_path = File.join(config_home, "tasks", "tasks.db")
-  ```
-
-  Fall back through `TASKS_FILE` env var, then this, then `~/.tasks.json` for legacy users.
-- **Real option parsing.** `parse_add_args` is a toy. Replace with `optparse` (stdlib, ships with Ruby) or `dry-cli` (gem) and a `Cmd` subcommand pattern — one class per command, each declaring its own flags:
-
-  ```ruby
-  require "optparse"
-
-  class AddCmd
-    def call(args)
-      due = nil
-      OptionParser.new do |o|
-        o.on("--due DATE") { |d| due = d }
-      end.parse!(args)
-      [args.join(" "), due]
-    end
-  end
-  ```
-
-  Now `tasks add "buy milk" --due 2026-04-30 --tag shopping` Just Works, and so does `--help` per command.
+- **Mixing storage and terminal code.** If `TaskStore` starts calling `puts`, or if `CLI` starts editing `@tasks` directly, the program becomes harder to change than it needs to be.
+- **Forgetting that `Data` is immutable.** `task.done = true` is not an option here. You replace the task with a new value.
+- **Dispatching user input without an allowlist.** `public_send` is safe here only because `COMMANDS` limits what can be called.
+- **Letting one command grow into a parser, formatter, and store update all at once.** Pull helpers like `format_task` out early.
+- **Hand-rolled flag parsing gets brittle.** `parse_add_args` is fine for one flag. It stops being fine the moment you add three more.
 
 ## What you learned
 
-This chapter taught no new language features. What it taught is *integration* — splitting concerns into a data layer and an interface layer, dispatching commands, sharing formatting helpers, persisting state, handling errors with friendly output.
+This chapter adds almost no new syntax. Its job is harder than that: keep a whole program legible.
 
-| Pattern | Where it appeared earlier |
+| Idea | Where it pays off here |
 |---|---|
-| `Data.define` for value objects | Ch 5 |
-| `Enumerable` + `each` | Ch 5 |
-| JSON load/save with permissive failure | Ch 7 |
-| `public_send` for command dispatch | Ch 6 |
-| `&:method` shorthand | Ch 2 |
-| `group_by` / `select` / `reject` / `count` | Ch 2-3 |
-| Custom exception classes | Ch 7 |
-| `ENV.fetch` with default | Ch 7 |
-| Heredocs for help text | Ch 2 |
+| `Data.define` | a task is a small value object |
+| `Enumerable` + `each` | the store gets filtering and counting for free |
+| `JSON.parse` / `JSON.pretty_generate` | tasks persist between runs |
+| Custom exception class | missing ids become friendly errors |
+| `public_send` + allowlist | commands dispatch cleanly |
+| `group_by`, `select`, `reject`, `count` | stats and filtering stay short |
+| `ENV.fetch` | the task file is configurable |
+| Small helper methods | commands stay readable |
 
-You now own a working CLI tool. You can add features. You can refactor. You can teach someone else. That's the skill bar this chapter is here to mark.
+You now have a tool that is worth extending. That is the bar this chapter is here to mark.
 
 ## Going deeper
 
-- Read the `thor` gem (`gem which thor`). It's the de-facto Ruby CLI framework — Rails' generators are built on it. Compare its `desc` / `method_option` / `def add` style to your `COMMANDS` array. Notice what Thor saves you and what it costs you in indirection.
-- Read `bundler`'s CLI source (`gem which bundler`, then `lib/bundler/cli.rb`). It's Thor-based. Skim three commands. Then read `tty-prompt`'s CLI surface for contrast — a smaller, plainer style.
-- Replace JSON with `sqlite3` end-to-end. `gem install sqlite3`. Rewrite `TaskStore` against it. Watch what assumptions break: `@tasks` as an in-memory array, the "load all at startup, save all at change" pattern, the id-as-array-position implicit contract. The CLI shouldn't need a single change.
+- Replace the JSON file with SQLite. The interesting part is not the database code. It is whether the CLI needs to change. Ideally it does not.
+- Read the source of a real Ruby CLI. `thor` and Bundler are obvious choices. Compare their command dispatch to your `COMMANDS` array.
+- Split `examples/tasks.rb` into `task.rb`, `task_store.rb`, `cli.rb`, and a small executable. Chapter 9 turns that move into a gem.
 
 ## Exercises
 
-1. **`tasks edit ID NEW_TEXT`** — let the user edit a task's text in place. Starter: `exercises/1_tasks_edit.rb` (modify `tasks.rb`'s logic; add a test or two).
+1. **`tasks edit ID NEW_TEXT`** — let the user change a task's text without changing anything else. Starter: `exercises/1_tasks_edit.rb`.
 
 2. **`tasks rm ID`** — delete a task. Starter: `exercises/2_tasks_rm.rb`.
 
-3. **Tags**: support `--tag work` on `add`, store as an array. Add `tasks list --tag work`. Starter: `exercises/3_tasks_tags.rb`.
+3. **Tags**: support `--tag work` on `add`, store tags as an array, and add `tasks list --tag work`. Starter: `exercises/3_tasks_tags.rb`.
 
 4. **Sort**: `tasks list --sort due` orders by due date (open ones first, then sorted). Starter: `exercises/4_tasks_sort.rb`.
 
 5. **Color output**: when stdout is a terminal (`$stdout.tty?`), color overdue items red. Hint: ANSI escape codes — `"\e[31m...\e[0m"`. Starter: `exercises/5_tasks_color.rb`.
 
-6. **Tests**: write a Minitest spec covering `TaskStore#add`, `#mark_done`, and `#find` (raises `NotFound`). Don't actually write to disk — use a temp file. (Tests are introduced properly in Chapter 9, but try the simple form here: `require "minitest/autorun"`, `class FooTest < Minitest::Test`, `def test_foo`, `assert_equal expected, actual`.) Starter: `exercises/6_task_store_test.rb`.
+6. **Tests**: write a small Minitest file covering `TaskStore#add`, `#mark_done`, and `#find` raising `NotFound`. Use a temp file instead of a real task file. Starter: `exercises/6_task_store_test.rb`.

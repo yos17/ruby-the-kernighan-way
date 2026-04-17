@@ -1,6 +1,8 @@
 # Chapter 5 — Objects, Classes, Modules
 
-The previous chapters built tools as scripts and lambdas. This chapter is when classes earn their keep — when state and behavior need to live together. Three programs: `addr.rb` (an address book with classes for `Person` and `AddressBook`), `shelter.rb` (an animal shelter with `Dog`/`Cat`/`Bird < Animal`), and `plugins.rb` (a plugin loader where mix-in modules add behavior at runtime). Along the way: classes, instance variables, attribute accessors, `self`, inheritance, method visibility, modules, `Comparable`, `Enumerable`, `Data.define` for value objects, and the object model that underlies all of it.
+The previous chapters mostly pushed data through methods. This chapter is where the data starts living inside objects. The three programs matter more than the terminology: an address book, an animal shelter, and a plugin loader. Each one answers the same question in a different way: what should one object remember, what behavior should be shared, and what behavior should be inherited?
+
+Read the chapter in that order. First look at the object each program is built around. Then look at what that object needs to remember. Only after that worry about `attr_accessor`, `include`, or `super`.
 
 ## Defining a class
 
@@ -539,8 +541,7 @@ class Host
   end
 
   def install(plugin_module)
-    extend(plugin_module)             # mix the module's methods into THIS instance
-    plugin_module.const_set(:HOST, self) if plugin_module.const_defined?(:HOST) || true
+    extend(plugin_module)
     @plugins << plugin_module
     self
   end
@@ -549,11 +550,10 @@ class Host
 end
 
 if __FILE__ == $PROGRAM_NAME
-  Dir[File.join(__dir__, "plugins", "*.rb")].each { |f| require_relative f.delete_prefix(__dir__ + "/") }
+  Dir[File.join(__dir__, "plugins", "*.rb")].each { |f| require f }
 
   host = Host.new
-  host.install(Greeter)
-       .install(Counter)
+  host.install(Greeter).install(Counter)
 
   puts host.list_plugins
   puts host.greet("Yosia")
@@ -596,7 +596,7 @@ What's new.
 
 `Dir[pattern]` returns matching paths. `Dir["plugins/*.rb"]` finds every `.rb` file in `plugins/`.
 
-`require_relative path` loads a Ruby file relative to the current file's location. Definitions in that file (like `module Greeter`) become available immediately after.
+`require path` loads each matching file. Definitions in that file, like `module Greeter`, become available immediately after.
 
 `extend(module)` mixes the module's methods into a single object — not the whole class. `host.extend(Greeter)` adds `greet` to `host` only, not to other `Host` instances.
 
