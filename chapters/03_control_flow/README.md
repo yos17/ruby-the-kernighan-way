@@ -2,6 +2,8 @@
 
 You've used `if`, `case`, and `each`. This chapter goes deeper. Three programs: `grep.rb` (a real grep clone with `-i`/`-n`/`-v`/`-c` flags and multi-file support), `top_errors.rb` (find the most common ERROR messages in a log), and `log_summary.rb` (group log entries by hour and count each severity level). Along the way: `if`/`unless`/ternary, `case` with patterns, all three loop forms, the Enumerable methods you'll write in your sleep, and Ruby's pattern matching.
 
+Professional Ruby code reaches for an Enumerable method first and a `while` loop almost never. Once you can name the right method (`group_by`, `partition`, `chunk_while`, `each_with_object`), most data-shaping problems collapse into one line.
+
 ## if, unless, and the modifier forms
 
 You've seen the basic `if`:
@@ -366,6 +368,30 @@ Compose this with `top_errors.rb` and you have the start of a real log analytics
 
 (File: `examples/log_summary.rb`.)
 
+## Common pitfalls
+
+**`case/in` falls through to `NoMatchingPatternError`.** Unlike `case/when`, an unmatched `case/in` raises. Add an `else` branch for any value you don't intend to handle:
+
+```ruby
+case shape
+in { type: "circle", radius: r } then "circle #{r}"
+else "unknown"
+end
+```
+
+**`loop` without `break`.** `loop do ... end` runs forever — there's no implicit exit. Always know what condition trips `break`. The same trap hits `while true`.
+
+**Mutating a collection while iterating it.** Adding to the array during `each` keeps iterating the freshly-added elements; deleting shifts indices under the iterator and skips items. Build a new array with `reject`/`select`/`map` instead, or collect a delete-list and apply it after the loop:
+
+```ruby
+arr = [1, 2, 3]
+seen = []
+arr.each { |n| seen << n; arr << n * 10 if n < 3 }
+seen   # => [1, 2, 3, 10, 20]   # iteration kept going through appended values
+```
+
+**Lazy enumerators need `.force` or `.to_a`.** `(1..).lazy.map { _1 * 2 }` is just a description of work; nothing runs until you ask for results with `.first(n)`, `.to_a`, or `.force`. Forgetting that step gives you back an enumerator object instead of an array, and the bug surfaces as a confusing `inspect` output rather than a crash.
+
 ## What you learned
 
 | Concept | Key point |
@@ -386,6 +412,12 @@ Compose this with `top_errors.rb` and you have the start of a real log analytics
 | `r.match?(s)` | true/false without MatchData |
 | `s[/regex/, 1]` | regex with capture group |
 | `^` (XOR) | true when exactly one operand is true |
+
+## Going deeper
+
+`ri Enumerable` from your terminal lists every method this chapter only sampled — `flat_map`, `take_while`, `drop_while`, `each_slice`, `each_cons`, `tally_by`, `lazy`, `find_index`, `minmax`, `sum`, and more. Read the list once. The names are mnemonic enough that, next time you reach for a `while` loop, the right name will surface.
+
+Real `grep` is a few thousand lines of C — most of it argument parsing, locale handling, and Boyer-Moore search. The Ruby `grep.rb` here is fifteen lines and handles 90% of daily use. That ratio (a tenth the code, most of the value) is typical for Ruby vs. C tools, and it's the reason Rails-shaped programs get written in Ruby in the first place.
 
 ## Exercises
 

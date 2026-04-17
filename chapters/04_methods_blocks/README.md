@@ -149,6 +149,34 @@ Inside the method, `block` is a regular variable holding a `Proc`. You can `bloc
 
 To call it with arguments: `block.call(a, b)` or the shorthand `block.(a, b)` or `block[a, b]`.
 
+## The `&` operator, in one rule
+
+`&` converts between a block and a Proc. That is the whole story; the direction depends on where it appears.
+
+- `def foo(&blk)` — in a parameter list, `&` *captures* the incoming block as a Proc named `blk`.
+- `foo(&prc)` — at a call site, `&` *unpacks* the Proc `prc` into the block slot.
+
+So a block becomes a Proc on the way in, and a Proc becomes a block on the way out. The same `&` is doing inverse jobs at the two ends.
+
+Forwarding a block is where this matters. If a method takes a block and wants to hand it to another method, you must capture and re-pass:
+
+```ruby
+def each_doubled(arr, &blk)
+  arr.each { |x| blk.call(x * 2) }   # use the captured Proc
+end
+
+def each_doubled_clean(arr, &blk)
+  arr.map { |x| x * 2 }.each(&blk)   # forward the block on
+end
+
+each_doubled_clean([1, 2, 3]) { |n| puts n }
+# => 2
+# => 4
+# => 6
+```
+
+Without the `&blk` parameter, you can't name the block. Without the `&blk` at the call site, `each` would receive `blk` as a regular positional argument and complain.
+
 ## Procs and lambdas
 
 A **Proc** is a block stored as an object. A **Lambda** is a Proc with two stricter behaviors:
@@ -337,6 +365,16 @@ This 13-line class is the basis of every event-driven framework in Ruby. The Rai
 
 (File: `examples/events.rb`.)
 
+## Common pitfalls
+
+Forgetting `&block` when forwarding. If a method takes a block but you need to hand it to another method, you must declare `&blk` and pass it back with `&blk`. Without the explicit capture, the block exists only for `yield` inside this method — there's no name to forward.
+
+Proc vs lambda return semantics. `return` inside a `Proc.new { ... }` returns from the *enclosing method*, often jumping out of code you didn't expect. `return` inside a `->{ ... }` returns only from the lambda. When in doubt, use a lambda. Reach for a Proc only when you specifically want the loose argument-matching and the long-jump return.
+
+`&:method` only works for zero-arg methods. `[1, 2].map(&:succ)` works because `succ` takes no arguments. `[1, 2].map(&:+)` does not — `+` needs an operand. For anything that takes arguments, write the block: `[1, 2].map { |n| n + 10 }`.
+
+`_1`/`_2`/`it` are convenience-only. They read well in three-character blocks like `{ it.upcase }`. They read poorly when the block is long, when meaning matters, or when nested blocks each have their own implicit param. In shared code or any block over a few lines, name the parameter: `do |order| ... end`.
+
 ## What you learned
 
 | Concept | Key point |
@@ -352,6 +390,25 @@ This 13-line class is the basis of every event-driven framework in Ruby. The Rai
 | `Hash.new { |h, k| h[k] = [] }` | hash with computed default |
 | Closures | lambdas/blocks capture their surrounding scope |
 | `lambda.call(args)` / `.(args)` / `[args]` | three ways to invoke |
+
+## Going deeper
+
+Read the source of `Enumerable` in the Ruby repo (`enum.c` plus the Ruby-level helpers). Forty-something methods all built on `each` — the same trick you'd use yourself, written once for the whole language.
+
+Read Chapter 6 of David A. Black's *The Well-Grounded Rubyist*. The block / Proc / lambda / `&` material there is the canonical longer treatment, and it pairs well with this chapter.
+
+Build an Either/Result type with lambdas only — no classes:
+
+```ruby
+Ok  = ->(value) { ->(on_ok, _on_err) { on_ok.call(value) } }
+Err = ->(reason) { ->(_on_ok, on_err) { on_err.call(reason) } }
+
+result = Ok.call(42)
+result.call(->(v) { puts "got #{v}" }, ->(e) { puts "err: #{e}" })
+# => got 42
+```
+
+Doing this once is a strong lesson in how much "object-oriented" structure dissolves into closures.
 
 ## Exercises
 

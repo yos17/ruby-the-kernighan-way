@@ -407,6 +407,30 @@ This is the same pattern Rails uses in `config/routes.rb`. The `Rails.applicatio
 
 (File: `examples/mini_dsl.rb`.)
 
+## When NOT to use metaprogramming
+
+Metaprogramming buys leverage; it spends clarity. The trade is worth it less often than enthusiasts pretend. Three rules of thumb.
+
+If deleting one `define_method` loop and writing three explicit methods would make the file shorter to read (not to type) — write the three. The reader does not benefit from your loop.
+
+If a colleague would have to `grep` your codebase for `method_missing` to figure out where `user.full_name` is defined, the indirection has cost more than it saved. Explicit methods land in editor "go to definition." Dynamic ones do not.
+
+If five lines of duplication would be more honest than three lines of magic, take the duplication. Duplication is visible; magic is invisible. Visible problems get fixed; invisible ones become legend.
+
+The right time to reach for these tools is when there is a real *family* of things — a set of attributes, a list of HTTP verbs, columns coming from a database schema you do not own. A *family* of three with no growth on the horizon is not a family. It is three.
+
+## Common pitfalls
+
+- **`method_missing` without `super`.** Forget the `super` in the unhandled branch and every typo that should have been `NoMethodError` becomes a silent `nil`. Bugs hide for months. The `else super` branch is not optional.
+- **`method_missing` without `respond_to_missing?`.** `obj.respond_to?(:foo)` returns `false` even when `obj.foo` works. Anything that introspects — serializers, form builders, RSpec matchers — sees a hole where your method should be. Always pair the two.
+- **Reopening core classes globally.** Adding `String#shout` in one file changes every `String` everywhere, including in gems you did not write. The bug surfaces in a stack trace that has nothing to do with your file. Use a refinement, or put the helper on a class you own.
+- **`class_eval` vs `instance_eval` confusion.** Inside `class_eval`, `self` is the class; `def foo` defines an *instance* method. Inside `instance_eval`, `self` is the object; `def foo` defines a method on its singleton class. Mix them up and you end up with class methods you wanted as instance methods, or vice versa. When in doubt, drop `puts self` into the block and re-read.
+- **Generated method names colliding with existing methods.** `define_method(:hash)` silently replaces `Object#hash`, breaking every Hash that holds your object. Before generating, check `instance_methods(false)` and `Object.instance_methods` for clashes. Reserve a prefix (`field_`, `attr_`) when generating from user-supplied names.
+
+## Debugging metaprogrammed code
+
+Three tools find generated methods. `obj.method(:foo).source_location` returns the `[file, line]` where `foo` was defined — works for `define_method`-generated methods too. `Module#instance_methods(false)` lists methods defined directly on a class (no inherited noise), useful for confirming a generator actually ran. For deeper traces, `TracePoint.new(:call, :return) { |tp| puts tp.method_id }.enable { ... }` prints every method called inside the block — the modern replacement for `set_trace_func`.
+
 ## What you learned
 
 | Concept | Key point |
@@ -423,6 +447,12 @@ This is the same pattern Rails uses in `config/routes.rb`. The `Rails.applicatio
 | `singleton_class` | a per-object class for unique methods |
 | `using Module` (refinements) | scoped monkey patches that don't leak |
 | `define_singleton_method` | add a method to one specific object/class |
+
+## Going deeper
+
+- Read the source of `ActiveRecord::DynamicMatchers` and `ActiveRecord::AttributeMethods` in the Rails repo. `find_by_email` and the per-column readers are exactly the patterns in this chapter, in production. Skim — do not try to understand all of it.
+- Read *Metaprogramming Ruby 2* by Paolo Perrotta. It is the book on this topic. The "object model" chapter alone repays the price.
+- Pick one metaprogrammed gem you already use (ActiveRecord, RSpec, Sinatra). Drop a `binding.irb` into one of its dynamic methods, run your test, and walk through what `self`, `caller`, and `instance_variables` look like at that point. Real metaprogramming is easier to read than to imagine.
 
 ## Exercises
 

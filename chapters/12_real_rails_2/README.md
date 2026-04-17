@@ -373,6 +373,49 @@ Nest cache calls. Inner caches stay valid even when the outer cache misses:
 
 Adding a comment invalidates the post's outer cache, but each existing comment's inner cache stays warm. Re-render is fast.
 
+## Common pitfalls
+
+- **Turbo Stream returning HTML status 200 when validation fails.** A failed `@comment.save` should re-render the form with `status: :unprocessable_entity`. Without that status, Turbo treats the response as success and the user sees no errors. The pattern:
+
+  ```ruby
+  def create
+    @comment = @post.comments.build(comment_params)
+    if @comment.save
+      respond_to { |f| f.turbo_stream; f.html { redirect_to @post } }
+    else
+      render :new, status: :unprocessable_entity
+    end
+  end
+  ```
+
+- **Session vs cookie confusion.** `session[:user_id]` writes to the session store (server-trusted, signed). `cookies[:foo]` writes a raw cookie the user can read. `cookies.signed[:foo]` and `cookies.encrypted[:foo]` are the safe forms when you need a real cookie. Auth tokens go in `session` or `cookies.signed`, never in `cookies` directly.
+- **Auth not enforcing CSRF on JSON endpoints.** `protect_from_forgery with: :null_session` in older code skips CSRF for API calls. Rails 8 defaults are stricter; don't relax them just because a JSON request fails. Send the CSRF token from your client instead.
+- **`deliver_now` blocking the request.** `WelcomeMailer.greet(user).deliver_now` runs the SMTP call in the request thread. The user waits for it. Use `deliver_later` for any user-facing send; `deliver_now` belongs in tests and rake tasks.
+- **Cache keys missing `cache_version` causing stale data.** `Rails.cache.fetch("posts/index") { Post.all.to_a }` never invalidates. Pass the model so the key auto-includes `updated_at`: `cache @post`, or use `Post.maximum(:updated_at)` in the key. When in doubt, render and check the log for `Read fragment` vs `Write fragment`.
+- **Active Storage URLs expiring.** `url_for(post.cover_image)` returns a signed URL that expires (5 minutes by default). Don't paste it into emails or RSS feeds. Use `rails_blob_path(post.cover_image, only_path: true)` for a stable URL through your app, or set a longer expiry in `config.active_storage.urls_expire_in`.
+
+## Security checklist
+
+Before you point a domain at this app, walk this list. Every item is a real way Rails apps get owned.
+
+- **CSRF on.** `protect_from_forgery with: :exception` is the Rails 8 default. Don't disable it. Forms made with `form_with` include the token automatically.
+- **Parameter wrapping for JSON.** `wrap_parameters format: [:json]` (default) wraps top-level JSON params under the model name so strong params work the same for HTML and JSON.
+- **Mass assignment closed via strong params.** `params.expect(post: [:title, :body])` (Rails 8) or `params.require(:post).permit(:title, :body)`. Never pass raw `params` to `update` or `create`.
+- **SQL injection.** Always parameterize: `Post.where("title LIKE ?", "%#{q}%")`. Never `Post.where("title LIKE '%#{q}%'")` — that's a direct hole. The `?` placeholder is the rule.
+- **XSS.** ERB escapes by default: `<%= user.name %>` is safe. `<%= raw user.name %>` and `user.name.html_safe` are not. Treat both as red flags — search your codebase for them and justify each one.
+- **Session secret rotation.** `bin/rails credentials:edit` shows `secret_key_base`. Rotate it if it ever leaks; old sessions become invalid (users get logged out, which is what you want).
+- **Password reset token TTL.** The Rails 8 auth generator sets a 15-minute window on reset tokens. Don't extend it. Short TTLs limit damage from a stolen email.
+- **Rate limiting.** Add `rack-attack` for login throttling and per-IP request caps:
+
+  ```ruby
+  # config/initializers/rack_attack.rb
+  Rack::Attack.throttle("logins/ip", limit: 5, period: 20.seconds) do |req|
+    req.ip if req.path == "/session" && req.post?
+  end
+  ```
+
+- **HTTPS via `force_ssl`.** `config.force_ssl = true` in `production.rb` redirects http to https, sets HSTS, and marks cookies secure. Kamal's proxy terminates TLS for you; this flag tells Rails to insist on it.
+
 ## What you learned
 
 | Concept | Key point |
@@ -391,6 +434,13 @@ Adding a comment invalidates the post's outer cache, but each existing comment's
 | `Rails.cache.fetch(key, expires_in:) { ... }` | cache aside |
 | `<% cache @post do %>` | fragment caching with auto-derived keys |
 | Russian doll caching | nested caches stay warm |
+
+## Going deeper
+
+- The Hotwire docs at `https://turbo.hotwired.dev`. Read the Turbo handbook end to end; it's short and the wire-format details matter when something doesn't update.
+- The Stimulus handbook at `https://stimulus.hotwired.dev/handbook/introduction`. Same story — small, finishable in an evening.
+- *Modern Front-End Development for Rails* (2nd ed.) by Noel Rappin. The book on Hotwire + Stimulus + import maps in Rails 7/8.
+- Read the `solid_queue` source on GitHub. It's a small gem (a few thousand lines of Ruby) that shows what a database-backed job queue looks like under the hood. After Ch 6 + 10, you can read most of it.
 
 ## Exercises
 

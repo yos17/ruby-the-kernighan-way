@@ -270,6 +270,18 @@ Post.published.recent.limit(5)
 
 Reads almost like English. Compose them.
 
+## Database design, briefly
+
+A few rules carry most of the weight.
+
+*First normal form*: each column holds one value; no comma-separated lists in a `tags` string. If you need many tags per post, make a `tags` table and a `post_tags` join. Searching `WHERE tags LIKE '%ruby%'` cannot use an index; `WHERE tag = 'ruby'` can.
+
+*Denormalize on purpose*. Strict normalization minimizes redundancy; production schemas sometimes duplicate a value (an author's display name copied onto each post) to avoid a join on a hot read path. Do it when you've measured a real cost, not preemptively.
+
+*Indexes*. Primary keys are indexed automatically. Foreign keys are not — but Rails' `t.references :author` adds an index for you because almost every foreign key gets queried (`Author#posts` does `WHERE posts.author_id = ?`). For multi-column queries (`WHERE author_id = ? AND published_at > ?`), add a composite index: `add_index :posts, [:author_id, :published_at]`. Column order matters — put the most selective column first, or the column you'll often query alone.
+
+*`EXPLAIN` shows query plans*. In the Rails console: `Post.where(author_id: 5).explain`. The output tells you whether the database is using an index (`Index Scan`) or scanning the whole table (`Seq Scan`). When a query gets slow, this is your first stop. (Postgres has the richest output; SQLite's is terse but readable.)
+
 ## Controllers
 
 Open `app/controllers/posts_controller.rb`. The scaffold generated:
@@ -372,6 +384,18 @@ end
 # => /posts/:post_id/comments, etc.
 ```
 
+## Rails conventions, and why they exist
+
+Rails calls itself "convention over configuration." Concretely that means: if you name files the way Rails expects, you write zero glue code. If you don't, you write configuration to bridge the gap. The conventions:
+
+- **File naming follows class naming.** `UsersController` lives in `app/controllers/users_controller.rb`. `BlogPost` lives in `app/models/blog_post.rb`. Zeitwerk turns the constant `UsersController` into the path `users_controller.rb` and loads it on first reference. Break the convention and autoloading raises.
+- **`users` plural for table, route, controller; `user` singular for model.** A row is one user; a controller manages the collection. So `User` (model class), `users` (table), `users_controller.rb`, `/users` (route). ActiveSupport's inflector handles the pluralization (`Inflector.pluralize("person") == "people"`).
+- **Seven RESTful actions, no more.** `index`, `show`, `new`, `create`, `edit`, `update`, `destroy`. They cover *list*, *display one*, *show form to add*, *handle submitted add*, *show form to edit*, *handle submitted edit*, *delete*. Why exactly seven: forms need a GET (`new`, `edit`) to render and a POST/PATCH/DELETE to submit, plus list/display reads. Anything else is either a different resource (extract it) or not REST (use a custom route — sparingly).
+- **REST verbs map to actions.** `GET /posts` → `index`, `POST /posts` → `create`, `GET /posts/:id` → `show`, `PATCH /posts/:id` → `update`, `DELETE /posts/:id` → `destroy`. The HTTP method *is* the dispatch.
+- **Instance variables flow controller → view.** `@post = Post.find(...)` in the controller is visible as `@post` in the view. Same `binding`-passing trick from `tiny_renderer`. Local variables (`post = ...`) do not flow — they vanish at the end of the action. This is the only "magic" here, and it's the same magic you wrote.
+
+The payoff: a developer reading your app knows where every file is without asking. The cost: deviating from convention is expensive — name a controller `UserManagement` and you fight Rails for the rest of the project.
+
 ## Views
 
 `app/views/posts/index.html.erb`:
@@ -429,6 +453,15 @@ end
 ```
 
 Use in views: `<%= post_status_label(post) %>`. Helpers are for view logic that's awkward in templates but doesn't belong in the model.
+
+## Common pitfalls
+
+- **Forgetting `bin/rails db:migrate`.** Running a generator scaffolds a migration file but does not apply it. The next `Post.create` raises `PG::UndefinedTable` (or the SQLite equivalent). After every `generate model` or `generate migration`, run `bin/rails db:migrate`. Use `bin/rails db:migrate:status` to see what's pending.
+- **Editing a migration that already ran in production — never.** Once a migration is in `schema_migrations` on a deployed environment, editing it does not re-run it; you've created a schema mismatch between machines that will bite weeks later. Write a *new* migration that fixes the prior one. The only safe edit-in-place case is a migration you wrote five minutes ago that has only run on your laptop.
+- **`before_action` order surprises.** Filters run in declaration order, top to bottom. `before_action :authenticate_user!` followed by `before_action :set_post` means `set_post` runs *after* auth — usually what you want. Reverse them and an unauthenticated request still hits the database. `skip_before_action` and `only:`/`except:` further complicate the order; print the chain with `_process_action_callbacks` if you're confused.
+- **`params` is `ActionController::Parameters`, not `Hash`.** `params[:id]` and `params["id"]` both work (HashWithIndifferentAccess heritage), but `params.to_h` raises unless you've called `permit`. Don't pattern-match `params` against a `Hash` shape; convert with `.to_unsafe_h` only when you genuinely don't need filtering.
+- **`dependent: :destroy` vs database `ON DELETE CASCADE`.** `:destroy` runs Ruby callbacks per child (slow on large sets, but fires `before_destroy`). `ON DELETE CASCADE` (set in a migration with `foreign_key: { on_delete: :cascade }`) is one SQL statement, fast, no callbacks. Pick based on whether you need the callbacks. Mixing both is fine — Rails deletes first, the DB cleans up anything the app missed.
+- **Missing `inverse_of` and N+1 in disguise.** When `Post belongs_to :author` and `Author has_many :posts` use a non-standard foreign key or scope, Rails can't infer the inverse. Reading `post.author.posts.first.author` then issues an extra query because `posts.first.author` is a fresh object that doesn't know it came from the `author` you started with. `inverse_of: :author` (and its mirror) tells Rails they're two views of the same record. With standard names Rails infers it; with custom `class_name:` or `foreign_key:`, set it explicitly.
 
 ## What you learned
 

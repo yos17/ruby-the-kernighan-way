@@ -264,6 +264,15 @@ You just wrote a (very tiny) `wc`. Chapter 2 makes a real one.
 
 The full file is in `examples/tiny_processor.rb`.
 
+## Common pitfalls
+
+- **Forgetting `.chomp`.** `name = gets` keeps the trailing newline. Comparisons like `name == "Yosia"` then fail silently. Always pair `gets` with `.chomp` unless you have a reason not to.
+- **Doing math on `gets` without converting.** `gets.chomp` returns a string. `gets.chomp + 1` raises `TypeError`. Use `gets.chomp.to_i` for integers, `.to_f` for floats.
+- **Confusing `gets` with `ARGV`.** `gets` reads from the keyboard while the program runs; `ARGV` holds words typed *after* the script name (`ruby calc.rb 10 + 5`). A program waiting at a `gets` prompt has not crashed — it wants you to type something and press Enter.
+- **`ARGV[0]` is always a string.** Even `ruby calc.rb 10` gives you `"10"`, not `10`. `"10" * 3` is `"101010"`, not `30`. Convert with `.to_i` or `.to_f` before doing math.
+- **Shell expands `*` before Ruby sees it.** `ruby calc.rb 10 * 5` may pass every filename in the directory as `ARGV[1]`. Quote it: `ruby calc.rb 10 '*' 5`. Same for `?` and `~`.
+- **`puts` adds a newline; `print` does not.** Output that runs together on one line means you wanted `puts`. A prompt that pushes the user's input onto the next line means you wanted `print`.
+
 ## What you learned
 
 | Concept | Key point |
@@ -279,6 +288,12 @@ The full file is in `examples/tiny_processor.rb`.
 | `File.foreach(file) do \|line\| ... end` | iterate a file one line at a time |
 | `string.split` | split on whitespace into an array |
 | `+=`, `-=`, `*=`, `/=` | shorthand math-assignment |
+
+## Going deeper
+
+- Read the docs for `String` and `Integer` at `https://docs.ruby-lang.org/en/master/String.html` and `https://docs.ruby-lang.org/en/master/Integer.html`. Skim the method lists. You won't remember them — the goal is to know roughly what's there so you can grep the page later.
+- Challenge: rewrite `calc.rb` so it can chain operations: `ruby calc.rb 10 + 5 \* 2` prints `30.0`. You'll need to walk `ARGV` in pairs. Don't worry about operator precedence — left-to-right is fine. This is a real exercise; budget thirty minutes.
+- Read the source of `wc` from the GNU coreutils — or, easier, run `ruby -e 'puts File.read("/etc/hosts").lines.size'` and compare to `wc -l < /etc/hosts`. Notice that the Ruby version is one line. The C version is hundreds. Both have their place.
 
 ## Exercises
 

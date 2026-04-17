@@ -163,6 +163,14 @@ Three error types you'll see often:
 
 When stuck, copy the first line of the error into a search engine. Almost any Ruby error you'll hit in the first ten chapters has been hit by ten thousand other beginners; the answers are out there.
 
+## Common pitfalls
+
+- **`ruby --version` still shows 2.6 (or similar) after install.** You didn't restart the terminal, or your shell init file (`~/.zshrc`, `~/.bashrc`) doesn't activate `mise`. Open a new terminal window. If still wrong, run `which ruby` — it should point inside `~/.local/share/mise/`, not `/usr/bin/`.
+- **Ran `ruby hello.rb` and got `No such file or directory`.** You're not in the folder that holds the file. Run `pwd` to see where you are and `ls` to see what's in it. `cd` into the right folder.
+- **Smart quotes from a word processor.** Pasting code from Notes, Word, or a webpage can replace `"` with `“` `”`. Ruby rejects those. Type quotes directly in your editor, or paste through VS Code which keeps them straight.
+- **Saved the file as `hello.rb.txt`.** Some editors append `.txt` silently. `ls` will show the real name. Rename with `mv hello.rb.txt hello.rb`.
+- **Closed the terminal mid-install.** `mise` and `rbenv` write to your shell config; if the install was interrupted, the `ruby` command may not resolve. Re-run the install command — both are safe to repeat.
+
 ## What you learned
 
 | Concept | Key point |
@@ -174,6 +182,12 @@ When stuck, copy the first line of the error into a search engine. Almost any Ru
 | NameError | undefined name. Misspelled? |
 | NoMethodError | called a method on the wrong kind of value (often `nil`). |
 | Tab completion | press Tab to complete file paths in the terminal |
+
+## Going deeper
+
+- Read the `irb` documentation at `https://docs.ruby-lang.org/en/master/IRB.html`. Open `irb`, type `2 + 2`, then `"hello".upcase`, then `puts "hi"`. Notice that `irb` shows the return value (`=> 4`) *and* anything `puts` printed. That distinction matters in Ch 1.
+- Challenge: write a one-liner using `ruby -e` (the `-e` flag runs Ruby code from the command line without a file). Goal: print today's date. Run `ruby -e 'puts Time.now'` and read what it prints. No file needed.
+- Read the source of one tiny published Ruby program: `https://github.com/ruby/ruby/blob/master/sample/fact.rb`. It is forty lines. You won't understand all of it. Skim it anyway and notice how short real Ruby programs can be.
 
 ## Exercises
 

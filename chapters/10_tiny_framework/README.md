@@ -346,6 +346,28 @@ The next two chapters are about Real Rails. When you see `app/models/user.rb`, `
 
 (Files: `examples/tiny_rack.rb`, `examples/tiny_router.rb`, `examples/tiny_orm.rb`, `examples/tiny_renderer.rb`, `examples/tiny_framework.rb`.)
 
+## Common pitfalls
+
+- **Leaking IOs and sockets.** A handler that opens `File.open(path)` without a block (or without `ensure ... close`) leaks a file descriptor on every request. Eventually the process runs out and the server stops accepting connections. Same for raw TCP sockets. Use the block form: `File.open(path) { |f| ... }` — Ruby closes for you.
+- **Shared state is not thread-safe.** `Model.records` is a single mutable array. Under WEBrick's single-threaded loop you don't notice; under Puma with multiple threads, two requests calling `Model.create` can race — same `next_id`, lost writes, half-built objects. Real Active Record sidesteps this with the database (rows, transactions, sequences). For this tiny ORM, treat it as a single-threaded toy or wrap mutations in a `Mutex`.
+- **Greedy regex routes.** Writing the path pattern as `(?<id>.+)` instead of `[^/]+` makes `/posts/1/edit` match `id = "1/edit"`. Always anchor each `:param` to "no slashes": `[^/]+`. Test routes with adjacent paths (`/posts/1` and `/posts/1/edit`) before trusting them.
+- **Unsafe ERB interpolation.** `<%= user_input %>` in our `tiny_renderer` interpolates raw — a user named `<script>alert(1)</script>` becomes executable HTML. Real Rails uses `ActionView::Base` with output safety: `<%= %>` HTML-escapes by default, `<%== %>` (or a `.html_safe` string) opts out. For your tiny renderer, escape with `CGI.escapeHTML(value)` before interpolating any value that came from a request.
+
+## Where Rails goes further
+
+Your tiny framework is the bones. Rails adds, in roughly the order you'll meet them:
+
+- **Asset pipeline (Propshaft + import maps).** Hashing, fingerprinting, and serving CSS/JS without a Node build step.
+- **Active Job + Solid Queue.** A unified job interface so `MyJob.perform_later(args)` runs work outside the request cycle, backed by the database.
+- **Action Cable.** WebSockets for live updates, used by Hotwire's Turbo Streams.
+- **Sessions, cookies, CSRF.** Signed/encrypted cookies, automatic CSRF token injection in forms, session storage.
+- **Request lifecycle helpers.** `params`, `flash`, `cookies`, `session`, `request`, `response` — all standardized objects on `ActionController::Base`.
+- **Generators.** `bin/rails generate` for models, controllers, migrations, jobs, mailers — repeatable boilerplate.
+- **Autoloading via Zeitwerk.** No `require` at the top of every file. The constant `User` triggers a load of `app/models/user.rb` by naming convention.
+- **Encrypted credentials store.** `config/credentials.yml.enc` plus a master key — secrets versioned into the repo, decrypted at boot.
+
+You won't write any of these by hand. You'll use them all.
+
 ## What you learned
 
 | Concept | Key point |
@@ -363,6 +385,12 @@ The next two chapters are about Real Rails. When you see `app/models/user.rb`, `
 | `ERB.new(s).result(binding)` | run a template against the current binding |
 | `binding.local_variable_set(k, v)` | inject locals into the binding |
 | Composition | router → renders → uses models — three pieces, one app |
+
+## Going deeper
+
+- Read Sinatra's source — `https://github.com/sinatra/sinatra/blob/main/lib/sinatra/base.rb`. Around 2,000 lines of Ruby implement everything Sinatra is. Find the `route!` method and trace one request through it.
+- Read Roda — `https://github.com/jeremyevans/roda/blob/master/lib/roda.rb`. A different routing philosophy: tree dispatch instead of a flat route table. Read it as a counterpoint to Sinatra.
+- Read `ActionDispatch::Routing` in Rails — `https://github.com/rails/rails/tree/main/actionpack/lib/action_dispatch/routing`. Start with `mapper.rb` (the `resources :posts` DSL) and `route_set.rb` (the dispatcher). It is much bigger than your `Router`, but the core idea — match method+path, capture params, invoke a callable — is what you wrote.
 
 ## Exercises
 

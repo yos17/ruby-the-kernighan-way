@@ -2,6 +2,8 @@
 
 You wrote tiny tools in Chapter 1 that took a string in and printed a string out. This chapter builds three programs that work with bigger collections of data: a `histogram` that shows how often each value appears in a list, a `csv_stats` summarizer that computes per-column statistics, and a `wordfreq` counter that finds the most common words in any text. Along the way you'll learn the methods Ruby gives you for strings, numbers, arrays, hashes, ranges, and symbols.
 
+Most non-trivial Ruby code is at heart string transformation, hash counting, and array iteration. The methods in this chapter appear in every Ruby program you'll write.
+
 ## Strings, briefly
 
 You've used strings; look closer.
@@ -152,6 +154,19 @@ end
 person[:foo]            # => nil       # no key — silently nil
 person.fetch(:foo)      # => raises KeyError
 person.fetch(:foo, "?") # => "?"       # default
+```
+
+## Sets
+
+A `Set` is an array that enforces uniqueness and answers `include?` in constant time. Reach for it when you have a "have I seen this?" question over a large collection — `array.include?` scans linearly; `set.include?` doesn't.
+
+```ruby
+require "set"
+
+seen = Set.new
+%w[apple banana apple cherry].each { |w| seen << w }
+seen                # => #<Set: {"apple", "banana", "cherry"}>
+seen.include?("apple")   # => true
 ```
 
 ## tally — the most useful counting idiom
@@ -339,6 +354,21 @@ The `-n N` option handling is crude — `ARGV.shift` to peel arguments off the f
 
 (File: `examples/wordfreq.rb`. Test data: `examples/quote.txt`.)
 
+## Common pitfalls
+
+**Integer division.** `10 / 3` is `3`, not `3.333...`. Convert one operand: `10.0 / 3` or `count.to_f / total`. The bug usually surfaces as a percentage that's always `0`.
+
+**String mutability.** `s.upcase` returns a new string; `s.upcase!` mutates in place and returns `nil` if nothing changed. Assigning the result of a `!` method into a variable can leave you with `nil`.
+
+```ruby
+s = "ABC"
+s = s.upcase!   # => nil   # already uppercase; bang returned nil; s is now nil
+```
+
+**Mixing symbol and string keys.** `{ name: "Yosia" }[:name]` works; `{ name: "Yosia" }["name"]` returns `nil`. Pick one shape per hash. JSON parsing returns string keys by default; symbol-keyed code that meets a JSON hash will read `nil` everywhere.
+
+**`[]` returns nil silently.** `arr[100]` and `h[:missing]` both return `nil` rather than raising. The error surfaces three method calls later as `NoMethodError: undefined method 'x' for nil`. Use `arr.fetch(i)` / `h.fetch(k)` when a missing value is a bug, not a default.
+
 ## What you learned
 
 | Concept | Key point |
@@ -360,6 +390,14 @@ The `-n N` option handling is crude — `ARGV.shift` to peel arguments off the f
 | `require "csv"` | load a stdlib library |
 | `CSV.read(file, headers: true)` | parse CSV with column names |
 | `Float(v, exception: false)` | parse if numeric, else `nil` |
+
+## Going deeper
+
+`Set` (`require "set"`) belongs in the same mental drawer as Array and Hash. Read its docs once.
+
+`Comparable` is the mixin behind `<`, `>`, `between?`, `clamp`, `min`, `max`. Any class that defines `<=>` gets all of those for free — Chapter 5 shows how to use it on your own classes.
+
+Real CSVs at scale (millions of rows) want `CSV.foreach(filename, headers: true)` instead of `CSV.read` — same shape, but streams a row at a time without loading the file into memory. The pattern (`read` for small files, `foreach` for big ones) repeats throughout Ruby's I/O.
 
 ## Exercises
 

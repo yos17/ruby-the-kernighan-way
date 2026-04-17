@@ -264,6 +264,44 @@ id,text,due,done
 2,study Ruby,2026-04-30,false
 ```
 
+## Common pitfalls
+
+- **Tight coupling between data and CLI.** The spec separates `TaskStore` from `CLI` for a reason: the moment they share state, every CLI tweak risks corrupting the data layer, and the data layer can never be reused (web, API, test harness). If `TaskStore` ever takes an `ARGV` or calls `puts`, you've lost the seam. Keep the dependency one-way: CLI knows about the store; the store knows nothing about the CLI.
+- **Single-file scripts grow ugly fast.** `tasks.rb` is fine at 200 lines. By 500 it's a maze. Split into `task.rb`, `task_store.rb`, `cli.rb`, `tasks` (the entry point) the moment a second person needs to read it — or the moment you do, a month later.
+- **No tests means breaking changes are invisible.** A two-line refactor in `mark_done` can silently break `--done` filtering. Even three Minitest assertions catch the regression *before* you push. Exercise 6 is not optional.
+- **`eval` or `send` with user input.** `public_send(cmd, args)` is safe here because we whitelist via `COMMANDS.include?(cmd)`. Drop the whitelist and `tasks instance_eval ...` becomes a remote-execution hole. Never call `send`, `public_send`, or `eval` on a string the user typed without an explicit allowlist.
+- **Hand-rolled `--due` parsing.** `parse_add_args` works, but every new flag doubles its complexity. See the next section.
+
+## What I'd do differently in production
+
+- **JSON → SQLite.** A single JSON file rewritten on every change loses data on a crash mid-write and doesn't scale past a few hundred tasks. Swap `TaskStore` for one backed by `sqlite3` (or `sequel` / Active Record). The CLI doesn't change — that's the seam paying off.
+- **Tests from line one.** A `test/task_store_test.rb` driving a temp-file store. Run it with `ruby -Ilib test/task_store_test.rb`. Every CLI command gets one happy-path assertion.
+- **Config in the right place.** Hard-coding `~/.tasks.json` is rude on Linux. Honor `XDG_CONFIG_HOME`:
+
+  ```ruby
+  config_home = ENV.fetch("XDG_CONFIG_HOME", File.join(Dir.home, ".config"))
+  default_path = File.join(config_home, "tasks", "tasks.db")
+  ```
+
+  Fall back through `TASKS_FILE` env var, then this, then `~/.tasks.json` for legacy users.
+- **Real option parsing.** `parse_add_args` is a toy. Replace with `optparse` (stdlib, ships with Ruby) or `dry-cli` (gem) and a `Cmd` subcommand pattern — one class per command, each declaring its own flags:
+
+  ```ruby
+  require "optparse"
+
+  class AddCmd
+    def call(args)
+      due = nil
+      OptionParser.new do |o|
+        o.on("--due DATE") { |d| due = d }
+      end.parse!(args)
+      [args.join(" "), due]
+    end
+  end
+  ```
+
+  Now `tasks add "buy milk" --due 2026-04-30 --tag shopping` Just Works, and so does `--help` per command.
+
 ## What you learned
 
 This chapter taught no new language features. What it taught is *integration* — splitting concerns into a data layer and an interface layer, dispatching commands, sharing formatting helpers, persisting state, handling errors with friendly output.
@@ -281,6 +319,12 @@ This chapter taught no new language features. What it taught is *integration* �
 | Heredocs for help text | Ch 2 |
 
 You now own a working CLI tool. You can add features. You can refactor. You can teach someone else. That's the skill bar this chapter is here to mark.
+
+## Going deeper
+
+- Read the `thor` gem (`gem which thor`). It's the de-facto Ruby CLI framework — Rails' generators are built on it. Compare its `desc` / `method_option` / `def add` style to your `COMMANDS` array. Notice what Thor saves you and what it costs you in indirection.
+- Read `bundler`'s CLI source (`gem which bundler`, then `lib/bundler/cli.rb`). It's Thor-based. Skim three commands. Then read `tty-prompt`'s CLI surface for contrast — a smaller, plainer style.
+- Replace JSON with `sqlite3` end-to-end. `gem install sqlite3`. Rewrite `TaskStore` against it. Watch what assumptions break: `@tasks` as an in-memory array, the "load all at startup, save all at change" pattern, the id-as-array-position implicit contract. The CLI shouldn't need a single change.
 
 ## Exercises
 

@@ -433,6 +433,14 @@ The custom `HttpError` class carries a `status` attribute. Callers can `rescue H
 
 (File: `examples/tiny_http_client.rb`. Requires network access to test.)
 
+## Common pitfalls
+
+- **Bare `rescue` catches too much.** `rescue` with no class catches `StandardError`, which includes `ArgumentError`, `TypeError`, `NoMethodError` — bugs you wanted to crash on. Always name the class: `rescue Errno::ENOENT`, `rescue JSON::ParserError`. If you really do want everything, write `rescue StandardError => e` so the intent is on the page.
+- **`ENV["FOO"]` returns `nil` silently.** Forget to set the variable and `nil` propagates until something far away blows up with `undefined method on NilClass`. Use `ENV.fetch("FOO")` (raises immediately) or `ENV.fetch("FOO", "default")` (explicit fallback). Never `ENV["FOO"]` for required values.
+- **Not closing files.** `File.open(path, "w")` without a block leaves the file open until garbage collection — file handles leak, on Windows the file stays locked. Use the block form: `File.open(path, "w") { |f| f.puts(...) }`. Ruby closes it for you, even on exception.
+- **String keys when you wanted symbols.** `JSON.parse('{"a": 1}')` returns `{"a" => 1}`. Calling `data[:a]` returns `nil`. Pass `symbolize_names: true` when the keys are config-shaped and you control the JSON. Leave string keys when the JSON came from an external system you do not control.
+- **Assuming network calls succeed.** `Net::HTTP.get` raises on DNS failure, `Net::OpenTimeout` on slow connect, `Errno::ECONNRESET` on a dropped connection, and returns 5xx responses as success objects. Wrap any network call in `with_retry` (counter + bounded retry + final `raise`) and check `response.is_a?(Net::HTTPSuccess)` before parsing the body.
+
 ## What you learned
 
 | Concept | Key point |
@@ -450,6 +458,12 @@ The custom `HttpError` class carries a `status` attribute. Callers can `rescue H
 | `ENV.fetch(name)` / `ENV.fetch(name, default)` | env vars, with required-or-default semantics |
 | `Net::HTTP.get_response(uri)` | minimal HTTP GET |
 | `binding.irb` | interactive REPL at any point in your code |
+
+## Going deeper
+
+- Read the `IO` and `StringIO` docs at `https://docs.ruby-lang.org/en/master/IO.html` and `https://docs.ruby-lang.org/en/master/StringIO.html`. `File` is just an `IO` with a path; `StringIO` is an in-memory `IO` you can hand to anything that wants a file. Tests get easier once you see this.
+- Read `OpenStruct` (`require "ostruct"`). It is the standard library's `Flex` from this chapter. Compare its source to yours. Notice what production-grade `method_missing` looks like.
+- Read the source of `dotenv` (the gem): one short file that does what Ch 7's exercise 6 asks. Then read `httparty`: a thin layer over `Net::HTTP` that adds the conveniences this chapter's `HttpClient` skips. Reading small gems is the fastest way to graduate from "I write scripts" to "I ship libraries."
 
 ## Exercises
 

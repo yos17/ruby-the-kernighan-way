@@ -205,6 +205,59 @@ Suggestions:
 
 Pick one. Build it. Deploy it. Tell someone.
 
+### Evaluation criteria
+
+You're done when all of these are true:
+
+- A stranger could clone the repo, follow the README, and be running locally inside ten minutes — without your help.
+- You have automated tests for the happy path of the new feature. Not full coverage; just the central path that proves it works.
+- You have backups configured and you've restored from one at least once (a backup you've never restored is not a backup).
+- You can roll back the deploy. `kamal rollback PREVIOUS_VERSION` works and you've tried it on staging or against a throwaway commit.
+
+If any of those fail, the feature isn't shipped — it's deployed. Different thing.
+
+## Common pitfalls
+
+- **Deploying without running migrations.** `kamal deploy` ships the new code but does not run `db:migrate`. The new app boots against the old schema and explodes on the first request that needs the new column. Run migrations explicitly:
+
+  ```bash
+  kamal app exec 'bin/rails db:migrate'
+  ```
+
+  Add it to your deploy checklist (or a Kamal hook) so you never forget.
+
+- **Secrets in committed files.** `config/master.key` is gitignored for a reason; `RAILS_MASTER_KEY` belongs in `.kamal/secrets`, never in `config/deploy.yml` or anywhere git tracks. Run `git log -p -- config/` before your first deploy and grep for anything that looks like a key.
+- **Not setting up backups before launching.** The first user signs up, writes a post, tells a friend. The disk fails. There's nothing to restore. Configure backups (and verify a restore) *before* you put a domain on it.
+- **Production database shrinking horizon.** SQLite is fine until it isn't — concurrent writes, multi-server deploys, or backup windows over a few seconds force the move to Postgres. Plan the migration before you need it: keep your queries portable (no SQLite-only functions), run staging on Postgres, dump and restore once as a rehearsal.
+- **Not testing the rollback path.** A rollback you've never tried is theater. Before you ship anything important, deploy a deliberate breaking change to staging, run `kamal rollback`, and confirm the app comes back. Time it. Know the number.
+
+## Production debugging
+
+When the live app misbehaves, the loop is: read the trace, reproduce locally if possible, fix, deploy. Tools to know:
+
+- **Read a production stack trace top-down.** The first line is what failed. The next several are *your* code (your `app/` files); below that is gem code and Rails internals. Stop reading once you're out of `app/`. The bug is almost always in the first frame inside your code.
+
+- **Production console.** When you need to inspect the running app's data:
+
+  ```bash
+  kamal app exec --interactive 'bin/rails console -e production'
+  ```
+
+  Treat it like a loaded weapon. `User.delete_all` runs immediately and there is no undo. Read before write.
+
+- **Logging context.** Tag every log line with the request id and (when available) user id so you can grep one user's session out of the noise:
+
+  ```ruby
+  # config/environments/production.rb
+  config.log_tags = [:request_id, ->(req) { req.session[:user_id] || "-" }]
+  ```
+
+- **Error tracking.** Logs scroll; errors don't notify. Wire up *one* of Honeybadger, Sentry, or Rollbar — the choice barely matters; using none is the mistake. Each ships a Rails gem, takes ten minutes to set up, and emails you the trace before the user does.
+
+- **Uptime monitoring.** Pingdom or BetterUptime hits a `/up` endpoint every minute. Rails 8 ships `/up` for free (the `Rails::HealthCheck` controller). When the app is down, the monitor texts you faster than your users do.
+
+- **Blue/green, the Kamal way.** You already have it. Each `kamal deploy` starts the new container alongside the old, health-checks it, switches the proxy, drains the old one. That's blue/green. Rolling back is just pointing the proxy at the old container — `kamal rollback` does exactly that.
+
 ## What you learned
 
 | Concept | Key point |

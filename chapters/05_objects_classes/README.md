@@ -350,6 +350,16 @@ a.balance += 10              # works — Struct is mutable
 
 When in doubt, prefer `Data` (immutable). Reach for `Struct` only when mutability is what you actually want.
 
+## Composition over inheritance
+
+Three shapes for "a thing with behavior," in the order you should reach for them:
+
+- **`Data.define`** — the thing *is* its data. No mutable state, no inheritance, equality by value. `Point`, `Money`, `Coordinate`. Start here whenever the type is mostly fields.
+- **A class with included modules** — the thing has identity and changes over time, and its behavior is a *combination* of capabilities. `Shelter include Enumerable`. `User include Greetable, Loggable`. Modules let you mix in exactly the behavior you need, from many sources, without forcing a tree.
+- **`class Child < Parent`** — only when the child is genuinely a *kind of* the parent and shares almost all of its behavior, and you have at least two such children. `Dog < Animal`, `Cat < Animal` qualifies. `Manager < User` usually doesn't — there's one `User` and a manager has a *role*, not a different identity.
+
+Heuristic: if you find yourself writing `class Foo < Bar` and Bar has only one subclass, delete the inheritance and put the shared methods in a module. If you find yourself writing `attr_accessor` on a class with no behavior, switch to `Data.define`. Inheritance is the strongest coupling Ruby offers — earn it.
+
 ## addr.rb
 
 An address book with two classes: `Person` (a value-ish object) and `AddressBook` (the collection).
@@ -616,6 +626,18 @@ When you call `obj.foo`, Ruby walks the ancestors list left-to-right and runs th
 
 This is how `super` knows what to call. This is how Comparable's methods reach your `<=>`. Chapter 6 uses this directly.
 
+## Common pitfalls
+
+`value = n` inside a method creates a local variable. It does *not* call your `value=` setter, even if you have `attr_accessor :value`. Ruby resolves bare assignment as "make a local" before it considers method dispatch. To call the setter, write `self.value = n`. This bites every newcomer at least once.
+
+`attr_accessor :name` is sugar for two methods — `def name; @name; end` and `def name=(v); @name = v; end`. Nothing more. Override either one freely; you don't lose the other. Use plain `def` when the getter or setter has any logic at all (validation, formatting, lazy loading).
+
+`Comparable` requires `<=>`, not `==`. `<=>` returns `-1`, `0`, or `1`. Defining `==` alone gives you nothing from `Comparable`; `Comparable` derives `==` from your `<=>`. Conversely, `Hash` and `Set` lookups go through `eql?` and `hash`, not `<=>` — if you put your objects in a hash, define those two as well.
+
+`super` has three forms and they are not interchangeable. `super` (no parens) passes the *same arguments* the current method received. `super()` (empty parens) passes *nothing*. `super(a, b)` passes exactly `a` and `b`. Forgetting the parens when you want to pass nothing is a common bug — bare `super` will quietly forward arguments the parent doesn't expect.
+
+Mutating shared frozen-looking constants. `NAMES = ["Alice", "Bob"]` looks constant but the array is mutable; `NAMES << "Carol"` works and silently changes shared state. Freeze the value: `NAMES = ["Alice", "Bob"].freeze`. For nested structures, freeze each layer or use `Data.define`.
+
 ## What you learned
 
 | Concept | Key point |
@@ -639,6 +661,14 @@ This is how `super` knows what to call. This is how Comparable's methods reach y
 | `Struct.new(:a, :b)` | mutable lightweight value object |
 | `obj.class.ancestors` | the method-lookup chain |
 | `obj.singleton_class` | per-object class for unique methods |
+
+## Going deeper
+
+Read the source of `ActiveSupport::Concern` (it's about 60 lines). It is a thin wrapper around `included`, `class_methods`, and dependency tracking — the entire Rails "concerns" pattern is sugar over `Module#include`. After you read it, the `app/models/concerns/` folder in any Rails app stops being magic.
+
+Take a friend's class hierarchy — anything more than two levels deep — and refactor it into modules plus a flatter class. Most deep hierarchies hide one or two cross-cutting capabilities (loggable, persistable, comparable) that compose better as mixins than as inheritance.
+
+Read the Ruby docs on `Module#refine`, `Module#include`, and `Module#prepend` side by side. The three are the entire mixin toolkit; `prepend` is the one most Ruby programmers under-use, and refinements are the one they over-fear. Knowing when each applies is the difference between writing libraries and writing scripts.
 
 ## Exercises
 

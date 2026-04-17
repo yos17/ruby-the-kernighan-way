@@ -253,6 +253,25 @@ If `tty-prompt` was too much, try one of these — all small enough to read in a
 
 After you've read one, you'll never feel like gem source is mysterious again.
 
+## Naming and discoverability
+
+The name on your gemspec is the name people will type into `gem install` for years. Pick it like you mean it.
+
+Conventions worth following:
+
+- **CLIs get verb-style names.** `bundle`, `rails`, `kamal`, `thor`. The user types it as a command; it should read like one.
+- **Libraries get noun-style names.** `nokogiri`, `pathname`, `sequel`. The user types `require "name"`; nouns scan better in source.
+- **Brand-able vs descriptive.** `nokogiri` is brand-able (memorable, ungoogled before its release). `csv-stats` is descriptive (boring but obvious). Brand-able wins for gems you hope outlive their first version; descriptive wins for one-off internal tools.
+- **Check RubyGems before you build.** `gem search -r ^wordtools$`. If it's taken, pick something else — RubyGems names are first-come, forever. The web UI at `https://rubygems.org/gems/wordtools` returns 404 if free.
+- **Hyphens vs underscores.** The gem name uses hyphens for namespacing; the require path follows the directory layout under `lib/`. Gem `tty-prompt` lives at `lib/tty/prompt.rb` and you `require "tty-prompt"` (which then loads `tty/prompt`). Gem `wordtools` (no hyphen) lives at `lib/wordtools.rb` and you `require "wordtools"`. Pick one shape and stay consistent — a gem named `word-tools` that requires as `wordtools` confuses everyone.
+
+## Common pitfalls
+
+- **Forgetting to `git commit` before `gem build`.** The generated gemspec uses `git ls-files` for `spec.files`. Uncommitted (or untracked) files are *not* in the build. You'll publish a gem missing half its source and not realize until a user files an issue. Run `git status` before every `gem build`. If `git ls-files | grep lib/` doesn't list every file you expect, stop and commit.
+- **Not pinning `required_ruby_version`.** Without it, your gem installs on Ruby 2.6 and explodes the first time it hits `Data.define` or pattern matching. Set `spec.required_ruby_version = ">= 3.2"` (or whatever your minimum truly is) and Bundler refuses the install with a clear message instead.
+- **Releasing without a CHANGELOG.** Users of your gem need to know what changed between `0.1.4` and `0.2.0` before they bump. "Read the diff" is not an answer. Maintain `CHANGELOG.md` from `0.1.0` — even one line per release. The format at `https://keepachangelog.com` is the convention.
+- **Gem name collisions.** `gem push` against a name someone else already owns fails with `Repushing of gem versions is not allowed.` But worse: a name *close to* a popular gem (`actverecord`, `nokogir1`) is a typosquatting trap and RubyGems may yank it. Search before you build, and don't be cute with misspellings.
+
 ## What you learned
 
 | Concept | Key point |
@@ -266,6 +285,12 @@ After you've read one, you'll never feel like gem source is mysterious again.
 | Minitest basics | `class FooTest < Minitest::Test`, `def test_x`, `assert_equal` |
 | RubyGems publishing | `gem signin` once, then `gem push` per release |
 | License (MIT) | non-trivial — without one, your gem is unusable to many |
+
+## Going deeper
+
+- Read `bundler`'s source. `gem which bundler`, then start at `lib/bundler.rb` and `lib/bundler/cli.rb`. It is the gem that ships with Ruby and runs every other gem you'll ever use. Skim the `Bundler::Definition` and `Bundler::Resolver` files — you don't need to follow every branch, just see how a serious gem is laid out.
+- Pick a popular gem and read its CHANGELOG end to end: `rails`, `sidekiq`, `puma`, or `pundit`. Notice how they describe breaking changes, deprecation cycles, and the gap between `1.x` and `2.0`. Your own CHANGELOG will be better for it.
+- Contribute to RubyGems itself. The `rubygems/rubygems` repo on GitHub has issues tagged `good first issue`. The codebase is the same Ruby idioms you're now reading fluently. A merged PR there is the credential you want.
 
 ## Exercises
 
