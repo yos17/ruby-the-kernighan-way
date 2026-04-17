@@ -1,10 +1,12 @@
 # Chapter 2 — Strings, Numbers, Collections
 
-You wrote tiny tools in Chapter 1 that took a string in and printed a string out. This chapter builds three programs that work with bigger collections of data: a `histogram` that shows how often each value appears in a list, a `csv_stats` summarizer that computes per-column statistics, and a `wordfreq` counter that finds the most common words in any text. Along the way you'll learn the methods Ruby gives you for strings, numbers, arrays, hashes, ranges, and symbols.
+Chapter 1 handled one input at a time. This chapter is where the data gets wider: a whole file of colors, a whole CSV of sales, a whole page of text. The three programs are a `histogram`, a `csv_stats` summarizer, and a `wordfreq` counter.
 
-Most non-trivial Ruby code is at heart string transformation, hash counting, and array iteration. The methods in this chapter appear in every Ruby program you'll write.
+The early sections are a toolbelt, not a reference manual. Read them with the three programs in mind. Which methods help break text apart? Which ones count? Which ones turn a pile of rows into one answer? That is the thread of the chapter.
 
-## Strings, briefly
+Most non-trivial Ruby code is at heart string transformation, hash counting, and array iteration. The methods in this chapter appear in nearly every Ruby program you'll write.
+
+## The toolbelt starts with strings
 
 You've used strings; look closer.
 

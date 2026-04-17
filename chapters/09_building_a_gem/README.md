@@ -1,8 +1,10 @@
 # Chapter 9 — Building a Gem
 
-A *gem* is a packaged Ruby library. By the end of this chapter you will have published one to RubyGems with your name on it. We start by reading the source of a real gem to see how mature Ruby libraries are organized, then build and publish one of our own.
+A gem is a Ruby library in a box: code, version, metadata, and a way for someone else to install it. By the end of this chapter you will have one published to RubyGems with your name on it.
 
-## What's in a gem
+The chapter has two jobs. First, read one real gem so the shape is no longer mysterious. Then build one of your own and push it out.
+
+## Open the box
 
 Every gem has, at minimum:
 

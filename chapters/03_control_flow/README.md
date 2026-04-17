@@ -1,8 +1,8 @@
 # Chapter 3 — Control Flow and Iteration
 
-You've used `if`, `case`, and `each`. This chapter goes deeper. Three programs: `grep.rb` (a real grep clone with `-i`/`-n`/`-v`/`-c` flags and multi-file support), `top_errors.rb` (find the most common ERROR messages in a log), and `log_summary.rb` (group log entries by hour and count each severity level). Along the way: `if`/`unless`/ternary, `case` with patterns, all three loop forms, the Enumerable methods you'll write in your sleep, and Ruby's pattern matching.
+This chapter is about decisions: which lines match, which values to keep, which path through the code should run next. The programs are a `grep` clone, an error counter, and a log summarizer. They all do the same two jobs over and over: choose and group.
 
-Professional Ruby code reaches for an Enumerable method first and a `while` loop almost never. Once you can name the right method (`group_by`, `partition`, `chunk_while`, `each_with_object`), most data-shaping problems collapse into one line.
+Professional Ruby code reaches for an Enumerable method first and a `while` loop almost never. Once you can name the right method (`group_by`, `partition`, `chunk_while`, `each_with_object`), most data-shaping problems collapse into one line. The control-flow forms in the first half of the chapter matter because they feed the programs in the second half, not because you need to memorize a taxonomy of loops.
 
 ## if, unless, and the modifier forms
 

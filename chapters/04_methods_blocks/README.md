@@ -1,6 +1,8 @@
 # Chapter 4 — Methods, Blocks, Procedures
 
-You've defined methods and used blocks for `each`/`map`/etc. This chapter is about how those things really work — what blocks are, what `yield` does, when to reach for a Proc or a Lambda, and how to compose small functions into bigger ones. Three programs: `pipeline.rb` (chain transformations together), `memoizer.rb` (cache an expensive function's results), and `events.rb` (a tiny event bus where listeners subscribe to topics).
+You have been using methods and blocks since the first chapter. This chapter is where they stop being background syntax and become tools you can shape directly. The programs are a `pipeline` that composes transformations, a `memoizer` that wraps a slow function, and an `events` bus that stores listeners and calls them later.
+
+The point is not abstract functional programming. The point is that Ruby lets you pass behavior around as easily as data, and once you see that clearly, a lot of everyday code gets smaller.
 
 ## Defining methods, properly
 
