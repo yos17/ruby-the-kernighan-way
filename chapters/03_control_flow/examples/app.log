@@ -1,0 +1,8 @@
+2026-04-17 10:00:01 INFO  startup complete
+2026-04-17 10:00:05 ERROR connection refused
+2026-04-17 10:00:07 WARN  slow query 350ms
+2026-04-17 10:00:10 ERROR connection refused
+2026-04-17 10:00:12 ERROR timeout reading socket
+2026-04-17 10:00:15 INFO  request handled
+2026-04-17 10:00:20 ERROR connection refused
+2026-04-17 10:00:25 ERROR timeout reading socket
