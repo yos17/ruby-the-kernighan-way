@@ -1,0 +1,2 @@
+The best programs are small, clear, and do exactly what they say.
+That's true in C, in shell, and in Ruby.
