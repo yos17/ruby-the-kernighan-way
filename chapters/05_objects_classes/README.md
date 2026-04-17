@@ -6,18 +6,6 @@ The three programs matter more than the terminology: an address book, an animal 
 
 Read the chapter in that order. First look at the object each program is built around. Then look at what that object needs to remember. Only after that worry about `attr_accessor`, `include`, or `super`. If the vocabulary starts stacking up, return to the programs. The programs carry the chapter.
 
-## New Ruby ideas you'll meet in this chapter
-
-- **Class** — a blueprint for objects. `Dog.new("Rex")` creates one. Each object has its own copy of the data (`@ivars`) but shares the methods.
-- **`initialize`** — the special method called the moment a new object is born. This is where you stash the starting data in `@variables`.
-- **Instance variable `@name`** — data that belongs to one object and sticks around for its lifetime.
-- **`attr_reader` / `attr_writer` / `attr_accessor`** — macros that generate getter and/or setter methods so you don't write boilerplate.
-- **Inheritance (`class Dog < Animal`)** — Dog gets every method Animal defines. `super` calls the parent's version of the same method.
-- **Module** — a bag of methods you can mix into a class with `include` (instance methods) or `extend` (class / singleton methods). The Ruby substitute for multiple inheritance.
-- **`Enumerable` mixin** — implement `each` on your class, `include Enumerable`, and get `map`, `select`, `group_by`, `count`, and many more for free.
-- **`Data.define(:field1, :field2)`** — one-line immutable value object. Like Struct but the fields are read-only — safer by default.
-- **`self`** — "the current object". Inside an instance method it's that instance; at the class level it's the class itself.
-
 ## Defining a class
 
 ```ruby

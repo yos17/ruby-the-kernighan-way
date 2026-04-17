@@ -4,21 +4,6 @@
 
 The sequence is straightforward: fill in the deploy config, set secrets, run the first deploy, verify the app, then put boring routines around it: logs, backups, rollback, and one more feature shipped end to end.
 
-## New ideas you'll meet in this chapter
-
-Shipping is mostly operations vocabulary. Skim these once so the rest of the chapter doesn't hand you three new terms per paragraph.
-
-- **Kamal** — the deploy tool Rails 8 ships with. Takes a Linux server, uploads a container of your app, starts it, and switches traffic once the new version is healthy.
-- **Container / Docker image** — a frozen snapshot of your app + its dependencies. Runs the same locally and in production, which is why "works on my machine" matters less now.
-- **Container registry** — a place to store those snapshots (Docker Hub, GitHub Container Registry). Kamal pulls from here onto your server.
-- **Environment variables in production** — secrets (database URLs, API keys) live in the server's environment, never in git. `RAILS_MASTER_KEY` unlocks the encrypted credentials file.
-- **SSL / TLS** — the `https://` in your URL. Kamal's proxy provisions a certificate from Let's Encrypt automatically.
-- **Zero-downtime deploy** — start the new container, health-check it, then swap traffic. Nobody sees a downtime window.
-- **Rollback** — `kamal rollback <version>` switches traffic back to a previous image. The fastest fix is usually "undo, then diagnose".
-- **Health check** — an endpoint (`/up` in Rails 8) the deployer hits to confirm the app is alive before routing real traffic to it.
-- **Observability** — logs, metrics, and error tracking. You won't diagnose production without them, and you can't add them after the fact in a hurry.
-- **Backup / restore** — scheduled database dumps, plus a rehearsed restore. An untested backup is a wish, not a plan.
-
 ## First deploy with Kamal
 
 Rails 8 comes with Kamal configured by default. Kamal takes a fresh Linux machine, uploads your container, starts it, and switches traffic over once the new version is healthy.

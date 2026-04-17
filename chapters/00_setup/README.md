@@ -2,16 +2,6 @@
 
 Before you write Ruby, you need three things on your computer: Ruby itself, a code editor, and a terminal. This chapter installs them and runs your first program. Budget about thirty minutes if it all works on the first try. If it takes longer, that is still normal; setup is the least glamorous part of programming for everyone.
 
-## New ideas you'll meet in this chapter
-
-Don't try to memorize these — just note them in passing. Each one is explained in context below.
-
-- **Ruby interpreter (`ruby`)** — the program that reads your code and runs it. You run a file with `ruby file.rb`.
-- **Terminal / shell** — the text window where you type commands. The `$` prompt means "your turn to type".
-- **`.rb` file** — a plain text file with Ruby source code in it. Nothing special; any editor can edit one.
-- **Version manager (`mise` / `rbenv`)** — lets you install and switch between Ruby versions. Needed because the Ruby that ships with macOS is too old.
-- **`puts`** — the simplest way to print a line of output to the terminal.
-
 ## Installing Ruby
 
 Ruby runs on macOS, Linux, and Windows. The install method differs by platform.

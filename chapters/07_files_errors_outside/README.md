@@ -4,18 +4,6 @@ The previous chapters stayed mostly inside Ruby. This chapter is about the place
 
 The three programs set the pace: `logwatch.rb` reads a changing file, `config_loader.rb` layers defaults with outside input, and `tiny_http_client.rb` talks to a remote server without pretending the network is polite.
 
-## New Ruby ideas you'll meet in this chapter
-
-- **`File.read` / `readlines` / `foreach`** — three ways to read: the whole file, an array of lines, or one line at a time (streaming).
-- **`begin` / `rescue` / `ensure`** — Ruby's try/catch/finally. `rescue` catches errors by type; `ensure` always runs, even on success or re-raise.
-- **`raise`** — throw an exception. `raise SomeError, "message"` is the common form.
-- **Custom exception classes** — subclass `StandardError` so callers can `rescue YourError` specifically instead of swallowing everything.
-- **`retry`** — inside a rescue block, jumps back to the top of `begin` to try again. Perfect for transient network errors.
-- **`ENV`** — a hash of the current process's environment variables. `ENV["APP_PORT"]` reads one; `nil` if missing.
-- **`.freeze`** — mark an object immutable. Later writes raise `FrozenError`. Used on constants to prevent accidental mutation.
-- **`StringIO`** — an "in-memory file". Anywhere that expects an IO (like Rack's `rack.input`) can take a StringIO instead.
-- **`Net::HTTP`** — Ruby's stdlib HTTP client. Verbose, but it's always available with no gem install.
-
 ## Reading files
 
 You've used `File.foreach` and `File.read`. The full picture:

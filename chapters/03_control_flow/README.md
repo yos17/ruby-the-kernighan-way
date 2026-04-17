@@ -4,17 +4,6 @@ This chapter is about decisions: which lines match, which values to keep, which 
 
 In day-to-day Ruby, Enumerable methods do most of the heavy lifting and plain `while` loops are comparatively rare. You do not need to memorize every method name at once. Learn a few, keep the program's input and output in view, and add more tools as you need them. The control-flow forms in the first half of the chapter matter because they feed the programs in the second half.
 
-## New Ruby ideas you'll meet in this chapter
-
-- **Modifier `if` / `unless`** — `puts "hi" if x > 0`. Reads left-to-right, great for one-line guards.
-- **`Enumerable`** — the mixin that gives collections `map`, `select`, `filter_map`, `group_by`, `count`, and dozens more.
-- **`group_by { |x| key }`** — bucket elements into a hash keyed by whatever the block returns.
-- **Regex capture groups** — `line.match(/(\w+)\s+(\w+)/)` gives a `MatchData`; `m[1]` is the first group. `(?<name>...)` labels a group for named access (`m[:name]`).
-- **`string[regex, n]`** — compact way to run a regex on a string and return capture group `n`, or `nil` if there's no match.
-- **Safe navigation `&.`** — `ARGV.first&.start_with?("-")` returns `nil` when the receiver is `nil` instead of crashing.
-- **XOR `^`** — bitwise exclusive-or, handy for "flip this boolean when a flag is set" (the `-v` invert logic in `grep.rb`).
-- **`next` / `break` / `ensure`** — skip to the next loop iteration / leave the loop / run cleanup code no matter how the block exits.
-
 ## if, unless, and the modifier forms
 
 You've seen the basic `if`:

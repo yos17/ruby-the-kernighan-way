@@ -4,18 +4,6 @@ A gem is a Ruby library in a box: code, version, metadata, and a way for someone
 
 The chapter has two jobs. First, read one real gem so the shape is no longer mysterious. Then build one of your own and push it out.
 
-## New ideas you'll meet in this chapter
-
-- **Gem** — a Ruby library packaged for distribution. `gem install X` fetches it from RubyGems.org and makes `require "X"` work.
-- **`.gemspec`** — the gem's manifest. Lists name, version, author, dependencies, and which files ship inside the package.
-- **`lib/` convention** — every gem's source lives in `lib/`. A gem named `foo` exposes `lib/foo.rb` as its entry point.
-- **`require` vs `require_relative`** — `require` searches the load path (used by consumers of your gem); `require_relative` uses a path relative to the current file (used inside your gem).
-- **Namespace module** — wrap every class and method in `module Wordtools; ... end` so your gem can't clash with user code or other gems.
-- **`::VERSION` constant** — the gem's version, kept in `lib/your_gem/version.rb` so tools can read it cheaply.
-- **Bundler** — manages gem dependencies per project via `Gemfile` and `Gemfile.lock`. `bundle install` installs them all; `bundle exec` runs a command with them available.
-- **Semantic versioning** — `MAJOR.MINOR.PATCH`. Bump patch for fixes, minor for new features, major for breaking changes.
-- **Publishing to RubyGems** — `gem build` produces a `.gem` file; `gem push` uploads it. Takes about thirty seconds once you have an account.
-
 ## Open the box
 
 Every gem has, at minimum:

@@ -4,22 +4,6 @@ Chapter 11 gave you a working blog. This chapter makes it feel like an applicati
 
 The order matters. First make the interface feel responsive. Then protect write actions. Then move slow work out of the request. Then cache what is expensive.
 
-## New Rails ideas you'll meet in this chapter
-
-This is where Rails stops looking like MVC and starts looking like a platform.
-
-- **Hotwire** — Rails's "HTML over the wire" umbrella. Moves updates over the network as HTML fragments instead of JSON, so you rarely need a JS framework.
-- **Turbo Drive** — intercepts link clicks and form submissions, fetches the next page, and swaps the `<body>` — all without a full reload. On by default.
-- **Turbo Frames** — tag a region with `<turbo-frame id="...">` and updates to that frame replace only that region, not the whole page.
-- **Turbo Streams** — server-pushed HTML fragments over WebSockets. Great for live comments, notifications, anything that has to update for other users.
-- **Stimulus** — a tiny JavaScript framework for sprinkling in behavior. Controllers attach to DOM elements via `data-controller="name"`.
-- **Active Storage** — file uploads, built in. `has_one_attached :cover` on a model and Rails handles uploads, storage, URLs.
-- **Active Job** — background jobs. `SomeJob.perform_later(args)` hands work to a queue (Solid Queue in Rails 8, Sidekiq elsewhere). Keeps slow work out of the request cycle.
-- **Authentication** — Rails 8 generates `bin/rails g authentication` for a sessions-based setup; older apps use Devise. Either way: users, passwords, password resets.
-- **CSRF (Cross-Site Request Forgery)** — Rails automatically adds a token to forms and rejects POST requests without it. Don't disable it.
-- **Action Mailer** — generates email templates and delivers them, usually via an Active Job so requests stay fast.
-- **Fragment caching** — `<% cache post do %>` wraps a bit of view in a cache keyed by the post. Re-uses rendered HTML until the underlying record changes.
-
 ## The build
 
 By the end of the chapter, the blog will have:

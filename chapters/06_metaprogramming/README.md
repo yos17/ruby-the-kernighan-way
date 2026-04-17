@@ -4,21 +4,6 @@ Metaprogramming is where Ruby can feel magical for the first time. It can also g
 
 The reading rule here is simple. Do not treat any of these techniques as tricks to sprinkle everywhere. Read each one as an answer to a narrow problem: a family of methods, a family of attribute names, a family of route declarations. It is fine if the example makes sense before the mechanism does.
 
-## New Ruby ideas you'll meet in this chapter
-
-Metaprogramming terms are the densest vocabulary in the book. Skim this list first; each term is unpacked with a working example below.
-
-- **Open classes / monkey patching** — any class in Ruby, including `String` and `Array`, can be reopened and added to. Powerful and dangerous: use it sparingly.
-- **`send` / `public_send`** — call a method whose name you only know as a symbol or string. `public_send` refuses to call private methods (safer).
-- **`define_method(name) { ... }`** — create a real, named instance method at runtime from a block. This is how `attr_accessor` is built.
-- **`instance_variable_get` / `instance_variable_set`** — read and write `@ivars` when you only know the name as a string.
-- **`method_missing`** — Ruby's "method not found" hook. Intercept unknown calls to build dynamic attributes, dynamic finders, or ghost methods.
-- **`respond_to_missing?`** — must be overridden alongside `method_missing` so `obj.respond_to?(:foo)` tells the truth about your dynamic methods.
-- **`class << self`** — opens the class's singleton class. Everything defined inside becomes a class-level method.
-- **`class_eval(&block)` / `instance_eval(&block)`** — run a block with `self` switched to a class or an instance, so method calls inside the block resolve there.
-- **`inherited(subclass)` hook** — fires automatically the moment a subclass is defined. Handy for giving each subclass its own class-level state.
-- **DSL (Domain-Specific Language)** — a method API that reads like English (`get "/home" do ... end`). Usually built out of the other techniques above.
-
 ## Open classes
 
 Every class in Ruby can be reopened at any point and added to:

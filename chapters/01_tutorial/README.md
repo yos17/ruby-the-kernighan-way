@@ -4,19 +4,6 @@ This chapter introduces Ruby through three programs: a greeter that takes input 
 
 The goal is not to master every piece today. The goal is to get a first working picture, so later chapters feel familiar instead of foreign. Run every snippet as you go.
 
-## New Ruby ideas you'll meet in this chapter
-
-A quick orientation — skim once, then let the sections below teach them properly.
-
-- **Variable** — a name that points to a value. `name = "Yosia"` creates one. Ruby figures out the type for you; you don't declare it.
-- **String interpolation** — `"Hello, #{name}!"` inserts the value of `name` into the string. Only works with double quotes.
-- **`gets.chomp`** — read one line of user input and strip the trailing newline the Enter key leaves behind.
-- **`ARGV`** — an array holding the words the user typed after `ruby file.rb` on the command line.
-- **`case / when`** — Ruby's multi-way branch. Cleaner than chaining `if / elsif / elsif`.
-- **Defining methods (`def`)** — package a reusable piece of behavior under a name.
-- **`File.foreach`** — read a file one line at a time. Memory-friendly, even for huge files.
-- **`.to_i` / `.to_f`** — convert a string to an integer or a float.
-
 ## hello.rb, expanded
 
 You wrote `hello.rb` in Chapter 0:
