@@ -152,6 +152,46 @@ end
 result   # => "found 2"
 ```
 
+## Debugging loops
+
+Loops are where beginners most often lose the thread. The program is correct for the first two iterations, wrong on the third, and by the time you print one variable you no longer know which pass you are looking at. Stop inside the loop instead.
+
+With the built-in debugger:
+
+```ruby
+require "debug"
+
+[10, 20, 30].each_with_index do |value, i|
+  binding.break if i == 1
+  puts "#{i}: #{value}"
+end
+```
+
+When it stops, inspect the live state:
+
+```text
+info          # local variables
+p i           # => 1
+p value       # => 20
+next          # run the next line in this frame
+continue      # resume the rest of the program
+```
+
+If you prefer Pry:
+
+```ruby
+require "pry"
+
+[10, 20, 30].each_with_index do |value, i|
+  binding.pry if i == 1
+  puts "#{i}: #{value}"
+end
+```
+
+Inside Pry, `i`, `value`, and anything else in scope are available immediately. If you also installed `pry-byebug`, you get `step`, `next`, `finish`, and `continue` there too.
+
+The useful habit is this: stop on the suspicious iteration, not after the loop has already run past the bug.
+
 ## Enumerable — the workhorse
 
 Most iteration uses Enumerable methods on arrays and hashes. You met `each`, `map`, `select`, `reject`, `tally`, `sort_by` in Chapter 2. A few more:
@@ -402,6 +442,7 @@ seen   # => [1, 2, 3, 10, 20]   # iteration kept going through appended values
 | `case/in` | pattern matching: matches *shape* and binds variables |
 | `&.` | safe navigation — call only if non-nil |
 | `loop`/`break`/`next` | the loose loop, with explicit exit |
+| `binding.break` / `binding.pry` in a loop | stop on one iteration and inspect real state |
 | `n.times`, `a.upto(b)` | counted loops in idiomatic form |
 | `reduce(:+)` / `reduce(0) { ... }` | fold a collection into one value |
 | `each_with_object({})` | accumulate into a starting value |

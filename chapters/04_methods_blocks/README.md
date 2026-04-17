@@ -83,6 +83,50 @@ end
 
 You used this in `calc.rb`. It's the dominant pattern.
 
+## Debugging method calls
+
+Methods are much easier to understand when you can stop at the call site, step into the method, and watch the arguments turn into a result.
+
+With the built-in debugger:
+
+```ruby
+require "debug"
+
+def divide(a, b)
+  binding.break
+  return "cannot divide by zero" if b == 0
+  a / b
+end
+
+divide(10, 2)
+```
+
+At the breakpoint:
+
+```text
+p a            # => 10
+p b            # => 2
+next           # run the next line
+finish         # run until this method returns
+continue       # resume the rest of the program
+```
+
+Use `step` when the next line calls another method and you want to go inside that call. Use `next` when you want to stay in the current method. That one distinction carries most of step-through debugging.
+
+If you prefer Pry:
+
+```ruby
+require "pry"
+
+def divide(a, b)
+  binding.pry
+  return "cannot divide by zero" if b == 0
+  a / b
+end
+```
+
+Then use Pry's inspection commands like `ls`, `whereami`, and `show-source divide`. If `pry-byebug` is installed, the same `step`, `next`, `finish`, and `continue` commands work there too.
+
 ## Blocks
 
 A block is a chunk of code passed to a method. You've passed lots:
@@ -131,6 +175,8 @@ end
 maybe_log("hello")                       # => hello
 maybe_log("hello") { |m| puts m.upcase } # => HELLO
 ```
+
+When blocks get confusing, debug the method that receives them, not just the block body. Stopping inside `maybe_log` or `greet_each` lets you inspect `block_given?`, the arguments passed to `yield`, and the order in which the block runs.
 
 ## Capturing the block as a variable: `&block`
 
@@ -383,6 +429,7 @@ Proc vs lambda return semantics. `return` inside a `Proc.new { ... }` returns fr
 |---|---|
 | `def m(a, b: 1, *rest, **kw)` | positional, keyword, splat, double-splat args |
 | `def m(a) = a + 1` | endless methods (one-liners) |
+| `step` vs `next` while debugging | enter the called method, or stay in the current one |
 | `yield`, `block_given?` | call the block; check if one was passed |
 | `&block` | capture the block as a Proc parameter |
 | `proc { }` vs `->( ) { }` | Proc (loose) vs Lambda (strict, `.()`-callable) |
@@ -392,6 +439,7 @@ Proc vs lambda return semantics. `return` inside a `Proc.new { ... }` returns fr
 | `Hash.new { |h, k| h[k] = [] }` | hash with computed default |
 | Closures | lambdas/blocks capture their surrounding scope |
 | `lambda.call(args)` / `.(args)` / `[args]` | three ways to invoke |
+| `binding.break` / `binding.pry` inside a method | stop in the real call frame and inspect it |
 
 ## Going deeper
 
