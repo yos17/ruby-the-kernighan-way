@@ -1,43 +1,33 @@
-# Ruby: The Kernighan Way
-### A comprehensive Ruby course — from zero to metaprogramming
+# Ruby & Rails — The Kernighan Way
 
-Kernighan's books teach by doing. You learn C by writing a C compiler. You learn Unix by building Unix tools. This course teaches Ruby the same way: every concept introduced through a real program you build and run.
+A tutorial book that takes a beginner from "I just installed Ruby" to "I can build a tiny Rails framework, ship a gem, and deploy a real Rails app." Designed for the reader who wants to *understand* Ruby — not just use Rails.
 
-No slides. No multiple-choice questions. Just code, explanation, and things you build.
+The book is for someone comfortable using a computer who has not programmed before. It is not for someone who already writes Ruby comfortably; for that, the existing 13-chapter draft preserved in [`archive/`](./archive/) is more useful.
 
----
+## Why "Kernighan Way"
 
-## Who This Is For
+Brian Kernighan's books teach by building. You learn C in *K&R* by writing tools — `wc`, `grep`, a calculator, a text formatter. You learn Unix in *The UNIX Programming Environment* by writing shell pipelines and a calculator language. The programs accumulate; later programs use earlier ones.
 
-- You know at least one programming language (any language)
-- You want to understand Ruby deeply, not just copy-paste it
-- You want to reach metaprogramming — the part that makes Ruby special
+This book follows the same shape. Every chapter builds 2-3 working programs. The TOC reads like a list of files in `bin/`, not a list of language features.
 
-## What You'll Build Along the Way
+## What you'll build
 
-| Chapter | You Build |
-|---------|-----------|
-| 1 | A working calculator (CLI) |
-| 2 | A unit converter |
-| 3 | A number guessing game |
-| 4 | A text statistics tool |
-| 5 | A bank account class |
-| 6 | A plugin system with modules |
-| 7 | A CSV analyzer |
-| 8 | A log file processor |
-| 9 | A robust file parser with error handling |
-| 10 | An attribute system (like Rails) |
-| 11 | A concurrent web scraper |
-| 12 | A CLI tool using gems |
-| 13 | A buggy todo app (debug it!) |
-
-## Structure
-
-Each chapter has:
-- **Concept explanation** — what it is and why it works the way it does
-- **Working code** — programs you can run right now
-- **Exercises** — things to build yourself
-- **What you learned** — the key takeaways
+| Chapter | What you build |
+|---|---|
+| 0 | Setup: install Ruby, run your first file |
+| 1 | A greeter, a calculator, a tiny line counter |
+| 2 | A histogram, a CSV summarizer, a word-frequency counter |
+| 3 | A `grep` clone, a top-errors log analyzer |
+| 4 | A pipeline composer, a memoizer, a tiny event bus |
+| 5 | An address book, an animal shelter, a plugin loader |
+| 6 | Your own `attr_accessor`, a flexible-hash, a tiny DSL |
+| 7 | A log watcher, a JSON config loader, a tiny HTTP client |
+| 8 | **Halfway capstone**: a complete personal task tracker CLI |
+| 9 | Build and publish a gem to RubyGems |
+| 10 | **A tiny web framework** — Rack, router, ORM, renderer, composed |
+| 11 | A real Rails app: blog with comments (Active Record, controllers, views) |
+| 12 | The same blog with Hotwire, forms, auth, jobs, caching |
+| 13 | Deploy your blog to a real host with Kamal |
 
 A good way to read this book is:
 
@@ -53,25 +43,47 @@ Beginners often get lost when they try to understand every abstraction immediate
 ## Setup
 
 ```bash
-ruby --version    # need 3.x
-gem --version     # comes with Ruby
+ruby --version    # Ruby 3.4 or newer
 ```
 
-That's all you need.
+If you don't have Ruby, start with [Chapter 0](./chapters/00_setup/).
 
----
+## How to read
 
-## The Philosophy
+Read sequentially. Each chapter assumes the previous ones. Type the example programs yourself — don't just read them. Try the exercises before looking at the solutions.
 
-Ruby was designed to make programmers happy. It achieves this by making the language adapt to you — not the other way around. By the end of this course, you'll understand how Ruby does that, and you'll know how to use it yourself.
+The book uses `chapters/<NN>_<name>/` for each chapter:
 
-The best programs are small, clear, and do exactly what they say. That's true in C, in shell, and in Ruby.
+```
+chapters/01_tutorial/
+├── README.md          # the chapter prose
+├── examples/          # the programs the chapter builds
+└── exercises/
+    ├── 1_*.rb         # exercise starter files
+    └── solutions/     # solutions, kept separate so you actually try
+```
 
-One beginner reminder is worth keeping in mind through the whole book:
+## Four ideas to keep coming back to
+
+The best programs are small, clear, and do exactly what they say. That's true in C, in shell, and in Ruby. When a chapter feels hard, come back to these four ideas:
 
 - strings are not numbers until you convert them
 - files are often just sources of strings and lines
 - arrays and hashes are how Ruby helps you organize data
 - methods, classes, and modules are ways to give structure to bigger programs
 
-If a chapter feels hard, come back to those four ideas. A lot of Ruby becomes easier when you reduce it to data going in, data changing shape, and results coming out.
+A lot of Ruby becomes easier when you reduce it to *data going in, data changing shape, and results coming out*.
+
+## Status
+
+Currently being rewritten from a 13-chapter draft (preserved in `archive/`) into the 14-chapter book described above. As of this commit:
+
+- **Ch 0 — Setup** ✅ written
+- **Ch 1 — A Tutorial Introduction** ✅ written
+- **Ch 2-13** ⏳ scaffolded but not yet written
+
+Design spec: [`docs/superpowers/specs/2026-04-16-ruby-rails-kernighan-curriculum-design.md`](./docs/superpowers/specs/2026-04-16-ruby-rails-kernighan-curriculum-design.md).
+
+## License
+
+(to be decided)
