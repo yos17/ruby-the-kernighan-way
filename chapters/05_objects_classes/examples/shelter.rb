@@ -1,7 +1,12 @@
 # shelter.rb — animal shelter with class hierarchy
 # Usage: ruby shelter.rb (demo)
 
+# Animal — the base class every specific animal inherits from.
+# It defines the shared state (name, age) and the contract
+# (every animal can `speak` and has a `description`).
 class Animal
+  # `attr_reader` generates `name` and `age` getter methods that
+  # simply return @name and @age. It saves us writing boilerplate.
   attr_reader :name, :age
 
   # Store the common data every animal shares.
@@ -31,6 +36,9 @@ end
 
 class Bird < Animal
   # Birds add one more piece of state on top of Animal's name and age.
+  # `super(name, age)` calls the parent's `initialize` with these
+  # exact arguments. (A bare `super` would forward *all* of our
+  # arguments, including `can_fly:`, which Animal doesn't accept.)
   def initialize(name, age, can_fly: true)
     super(name, age)
     @can_fly = can_fly
@@ -40,11 +48,17 @@ class Bird < Animal
   def speak = "#{@name}: tweet!"
 
   # Reuse Animal's description, then add the bird-specific detail.
+  # Bare `super` (no parens) means "call the parent's method with
+  # the same arguments I received" — handy here since description
+  # takes none.
   def description
     super + (@can_fly ? " (can fly)" : " (can't fly)")
   end
 end
 
+# Shelter — a collection of Animals. Including Enumerable means
+# any `each` implementation turns this class into a first-class
+# collection (`select`, `map`, `group_by` all work automatically).
 class Shelter
   include Enumerable
 

@@ -1,18 +1,27 @@
 # pipeline.rb — chain transformations together
 # Usage: ruby pipeline.rb (demo)
 
+# Pipeline — chains any number of "steps" (lambdas or procs)
+# together, so the output of one feeds into the input of the next.
+# Great for data transformation: clean → parse → summarise.
 class Pipeline
-  # Store the callables in the order they should run.
+  # `*steps` is a splat: it collects every argument into an array,
+  # so `Pipeline.new(a, b, c)` stores [a, b, c] in @steps.
   def initialize(*steps)
     @steps = steps
   end
 
-  # Feed the input through each step and return the final value.
+  # `reduce(input)` starts with `input` as the accumulator, then
+  # runs the block once per step — each call feeds the previous
+  # result forward. Classic fold/reduce pattern.
   def call(input)
     @steps.reduce(input) { |value, step| step.call(value) }
   end
 
-  # Return a new pipeline with one extra step appended to the end.
+  # Return a *new* pipeline with one extra step appended to the end.
+  # We never mutate @steps — building new pipelines means you can
+  # share and extend them without surprises. `*@steps` splats the
+  # array back into individual arguments.
   def then(step)
     Pipeline.new(*@steps, step)
   end

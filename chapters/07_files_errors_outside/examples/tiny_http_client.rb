@@ -6,13 +6,22 @@ require "net/http"
 require "uri"
 require "json"
 
+# HttpClient — a tiny wrapper around Ruby's stdlib Net::HTTP that
+# adds JSON parsing and automatic retries for transient errors.
+# A good example of "build a small useful abstraction on top of a
+# ugly standard library".
 class HttpClient
+  # Custom exception that carries the HTTP status code. Having a
+  # domain-specific error type makes rescue blocks downstream much
+  # more precise: `rescue HttpClient::HttpError` vs. catching every
+  # possible network or JSON thing that could go wrong.
   class HttpError < StandardError
     attr_reader :status
 
-    # Store the HTTP status code alongside the message body.
     def initialize(status, message)
       @status = status
+      # Pass the message up to StandardError's initializer so
+      # `e.message` works the way you'd expect.
       super(message)
     end
   end
@@ -31,6 +40,10 @@ class HttpClient
   private
 
   # Retry a transient network block a few times before giving up.
+  # `yield` runs whatever block the caller passed to `with_retry`.
+  # `retry` jumps back to the top of the `begin` — a very Ruby-
+  # flavoured way to express "try again". If we've burned all
+  # attempts, `raise` re-raises the last exception as-is.
   def with_retry(max: 3)
     attempts = 0
     begin

@@ -5,17 +5,29 @@
 require "json"
 require "date"
 
+# Task — an immutable record for one to-do item. `Data.define`
+# generates a value class with read-only accessors for every
+# field. The `do ... end` block lets us add helpers on top.
+# Because Data is immutable, "updating" a task means creating a
+# new one (see `mark_done` below).
 Task = Data.define(:id, :text, :due, :done) do
   # Turn the task into a plain hash so it can be written as JSON.
   def to_h = { id: id, text: text, due: due, done: done }
 
-  # Tell the CLI whether this open task is already past its due date.
+  # Tell the CLI whether this open task is already past its due
+  # date. Completed tasks are never "overdue".
   def overdue? = due && !done && Date.parse(due) < Date.today
 end
 
+# TaskStore — the storage layer. Handles loading, saving, adding,
+# finding, and completing tasks. Persistence is just a JSON file,
+# which is all a single-user tool needs.
 class TaskStore
   include Enumerable
 
+  # Domain-specific error. Scoping it under TaskStore means the
+  # full name (`TaskStore::NotFound`) reads nicely in rescue
+  # clauses and doesn't pollute the global namespace.
   class NotFound < StandardError; end
 
   # Load all persisted tasks from disk when the store starts up.
@@ -39,6 +51,10 @@ class TaskStore
   end
 
   # Replace one task with a completed copy, then save the updated list.
+  # Since Task is immutable we can't flip its `done` flag in place;
+  # instead we copy its attributes with `to_h.merge(done: true)`
+  # and build a brand-new Task. `**hash` splats a hash into
+  # keyword arguments, matching `Task.new(id:, text:, due:, done:)`.
   def mark_done(id)
     task = find(id)
     idx = @tasks.index(task)
@@ -68,7 +84,15 @@ class TaskStore
   end
 end
 
+# CLI — the presentation layer. Parses ARGV, dispatches to the
+# right command method, and writes output. Kept separate from
+# TaskStore on purpose: storage shouldn't know about command-line
+# flags, and the CLI shouldn't know about JSON files. This split
+# is the "M and C" half of MVC, shrunk to fit in one file.
 class CLI
+  # `%i[ ... ]` is a shortcut for an array of symbols — the same
+  # as [:add, :list, :done, ...]. The whitelist guards against
+  # arbitrary method names being called via `public_send` below.
   COMMANDS = %i[add list done search stats export help]
 
   # Keep the storage layer and the output target separate from command parsing.
@@ -78,6 +102,9 @@ class CLI
   end
 
   # Dispatch the first CLI word to a command method and show friendly errors.
+  # `public_send` calls a method by name but refuses to call
+  # private methods — safer than `send` when the name came from
+  # user input. The COMMANDS whitelist above makes it safer still.
   def run(args)
     cmd = args.shift&.to_sym
     cmd = :help unless COMMANDS.include?(cmd)

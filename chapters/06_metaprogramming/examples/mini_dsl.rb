@@ -1,21 +1,44 @@
 # mini_dsl.rb — declarative routing DSL
 # Usage: ruby mini_dsl.rb (demo)
 
+# Router — a tiny declarative DSL. You subclass Router and write
+# a routing table that looks like English:
+#
+#   class App < Router
+#     draw do
+#       get  "/"      do "home" end
+#       post "/login" do "..." end
+#     end
+#   end
+#
+# This pattern — define a class, hand it a block full of clean
+# "keywords" — is the same one Rails uses for routes, migrations,
+# and models. That "internal DSL" feel is Ruby's superpower.
 class Router
+  # `Data.define` makes an immutable value object for one route.
   Route = Data.define(:method, :path, :handler)
 
-  # Keep the route table on the class, since the DSL writes class-level data.
+  # Class-level storage: the routes table belongs to the class
+  # itself, not to any single Router instance. Lazy-initialized
+  # with `||=` so we don't need an explicit initialize.
   def self.routes = (@routes ||= [])
 
-  # Give each subclass its own route table instead of sharing the parent's.
+  # `inherited` is a Ruby hook fired the moment a subclass is
+  # defined (here, `class App < Router`). We give each subclass its
+  # own fresh @routes array; without this, every subclass would
+  # share the parent's list and routes would bleed across apps.
   def self.inherited(subclass)
     subclass.instance_variable_set(:@routes, [])
   end
 
-  # Evaluate the routing block in the class's context.
+  # `class_eval(&block)` runs the block with `self` set to this
+  # class — so `get "/path" do ... end` inside the block calls our
+  # class-level `get`, not some undefined top-level method.
   def self.draw(&block) = class_eval(&block)
 
-  # Define one DSL method per HTTP verb, such as get or post.
+  # Generate five singleton methods (get/post/put/patch/delete) on
+  # the class, each one capturing its verb in a closure. This one
+  # loop replaces five near-identical copy-pasted definitions.
   %i[get post put patch delete].each do |verb|
     define_singleton_method(verb) do |path, &handler|
       routes << Route.new(method: verb, path: path, handler: handler)

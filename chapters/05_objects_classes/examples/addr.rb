@@ -5,11 +5,23 @@
 
 require "json"
 
+# `Data.define(:name, :email)` (Ruby 3.2+) creates an immutable
+# value class with read-only accessors for :name and :email. Think
+# of it as "Struct, but you can't modify the fields after creation".
+# The result is a class, so `Person.new(name: "...", email: "...")`
+# builds a new Person with both fields.
 Person = Data.define(:name, :email)
 
+# AddressBook — stores and searches Person value objects, backed
+# by a JSON file on disk so state survives between runs.
 class AddressBook
+  # Mixing in Enumerable gives us `map`, `select`, `count`, and
+  # dozens more iteration methods "for free" — all we had to
+  # implement was `each`. This is classic duck-typing Ruby.
   include Enumerable
 
+  # `__dir__` is "the directory of this file" — putting the JSON
+  # file next to the script keeps the demo self-contained.
   STORE = File.join(__dir__, "addr.json")
 
   # Load any saved people so the address book persists across runs.

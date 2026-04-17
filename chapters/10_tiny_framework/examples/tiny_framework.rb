@@ -1,6 +1,11 @@
 # tiny_framework.rb — compose tiny_rack + tiny_router + tiny_orm + tiny_renderer
 # Usage: ruby tiny_framework.rb (then visit http://localhost:9292)
 
+# tiny_framework.rb — the centerpiece of the book. Shows how
+# three tiny pieces — router, ORM, renderer — compose into
+# something that feels unmistakably like Rails, but in ~60 lines.
+# Read this alongside the previous four examples; each one is a
+# self-contained lesson, and this file is where they meet.
 require "webrick"
 require "stringio"
 require_relative "tiny_router"
@@ -25,9 +30,12 @@ File.write(File.join(VIEWS_DIR, "users_show.erb"), <<~ERB)
   <p><a href="/users">back</a></p>
 ERB
 
+# Inheriting from Model (our tiny_orm base class) gives User the
+# whole create/all/find/where/find_by_* API — no additional code.
 class User < Model
 end
 
+# Seed a few records so the pages have something to show.
 User.create(name: "Yosia", role: "admin")
 User.create(name: "Alice", role: "user")
 User.create(name: "Bob",   role: "user")
@@ -48,6 +56,11 @@ router.get("/users/:id") do |params|
   renderer.render("users_show", user: user.to_h)
 end
 
+# Hook the router up to WEBrick. Every incoming request is
+# translated into a Rack env hash, handed to router.call, and the
+# resulting [status, headers, body] triple is copied back onto the
+# WEBrick response. This tiny adapter is the whole reason Rails,
+# Sinatra, Hanami etc. can all speak the same protocol.
 server = WEBrick::HTTPServer.new(Port: 9292, Logger: WEBrick::Log.new(File::NULL))
 server.mount_proc("/") do |req, res|
   env = {
@@ -59,6 +72,8 @@ server.mount_proc("/") do |req, res|
   status, headers, body_parts = router.call(env)
   res.status = status
   headers.each { |k, v| res[k] = v }
+  # `body_parts.join` concatenates every string chunk the Rack
+  # body produces — fine for small responses like ours.
   res.body = body_parts.join
 end
 

@@ -1,13 +1,19 @@
 # plugins.rb — a tiny plugin system
 # Usage: ruby plugins.rb (demo, loads from examples/plugins/)
 
+# Host — an object that "accepts" plugins. Each plugin is a
+# module of methods; installing one mixes those methods into *this
+# specific instance* (not every Host ever created).
 class Host
   # Start with no installed plugins.
   def initialize
     @plugins = []
   end
 
-  # Extend this object with one plugin module and remember that it was installed.
+  # `extend(mod)` mixes `mod`'s methods into the singleton class of
+  # `self` — only this one object gains those methods. Compare with
+  # `include`, which mixes into *every* instance of a class.
+  # Returning `self` lets callers chain: host.install(A).install(B).
   def install(plugin_module)
     extend(plugin_module)
     @plugins << plugin_module
@@ -19,6 +25,9 @@ class Host
 end
 
 if __FILE__ == $PROGRAM_NAME
+  # Auto-discover and load every *.rb file in the plugins/ folder.
+  # `Dir[pattern]` returns every path that matches the glob. This is
+  # how real plugin systems (Rails initializers, test runners) work.
   Dir[File.join(__dir__, "plugins", "*.rb")].each { |f| require f }
 
   host = Host.new

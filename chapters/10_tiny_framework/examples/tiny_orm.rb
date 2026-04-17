@@ -1,8 +1,19 @@
 # tiny_orm.rb — a baby Active Record using method_missing for queries
 # Usage: ruby tiny_orm.rb (demo)
 
+# Model — a miniature Active Record. Inherit from it and you get
+# create/find/where/find_by_X for free. Everything lives in memory
+# (no real database) but the API shape is exactly what Rails uses,
+# so the lessons transfer directly.
 class Model
+  # `class << self` opens the class's "singleton class" — the
+  # place where class-level methods actually live. Everything
+  # defined here is a *class* method, like `User.create(...)`.
+  # This block form is cleaner than prefixing every definition
+  # with `self.`.
   class << self
+    # One accessor generates reader and writer methods: records,
+    # records=, next_id, next_id=.
     attr_accessor :records, :next_id
 
     # Give each subclass its own record store and id counter.
@@ -32,12 +43,17 @@ class Model
       records.select { |r| attrs.all? { |k, v| r[k] == v } }
     end
 
-    # Support dynamic finders like find_by_name("Alice").
+    # Support dynamic finders like find_by_name("Alice"), find_by_role("admin"),
+    # etc. — you never have to declare them; `method_missing`
+    # figures out which attribute to look up by parsing the method
+    # name at call time. Rails used to work exactly like this.
     def method_missing(name, *args)
       if name.to_s.start_with?("find_by_")
         attr = name.to_s.delete_prefix("find_by_").to_sym
         records.find { |r| r[attr] == args.first }
       else
+        # Pass unknown methods up the chain so Ruby's normal
+        # NoMethodError still fires for real typos.
         super
       end
     end
