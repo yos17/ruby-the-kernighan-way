@@ -2,16 +2,19 @@
 # Usage: ruby plugins.rb (demo, loads from examples/plugins/)
 
 class Host
+  # Start with no installed plugins.
   def initialize
     @plugins = []
   end
 
+  # Extend this object with one plugin module and remember that it was installed.
   def install(plugin_module)
     extend(plugin_module)
     @plugins << plugin_module
     self
   end
 
+  # Show the names of the plugin modules mixed into this host.
   def list_plugins = @plugins.map(&:name)
 end
 

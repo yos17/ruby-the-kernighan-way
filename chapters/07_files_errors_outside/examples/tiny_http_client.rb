@@ -9,14 +9,18 @@ require "json"
 class HttpClient
   class HttpError < StandardError
     attr_reader :status
+
+    # Store the HTTP status code alongside the message body.
     def initialize(status, message)
       @status = status
       super(message)
     end
   end
 
+  # Remember the base URL so later requests only need a path.
   def initialize(base_url) = @base_url = base_url
 
+  # Perform one GET request, retrying transient failures and parsing JSON on success.
   def get(path)
     uri = URI.join(@base_url, path)
     response = with_retry { Net::HTTP.get_response(uri) }
@@ -26,6 +30,7 @@ class HttpClient
 
   private
 
+  # Retry a transient network block a few times before giving up.
   def with_retry(max: 3)
     attempts = 0
     begin

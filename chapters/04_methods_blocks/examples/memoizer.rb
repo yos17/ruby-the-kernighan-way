@@ -1,6 +1,7 @@
 # memoizer.rb — wrap any callable with a result cache
 # Usage: ruby memoizer.rb (demo)
 
+# Wrap a callable so repeated calls with the same arguments reuse the cached result.
 def memoize(fn)
   cache = {}
   ->(*args) { cache.fetch(args) { cache[args] = fn.call(*args) } }

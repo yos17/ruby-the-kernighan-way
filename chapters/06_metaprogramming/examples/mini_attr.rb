@@ -2,6 +2,7 @@
 # Usage: ruby mini_attr.rb (demo)
 
 module Attrs
+  # Build reader and writer methods that print every assignment.
   def attr_logged(*names)
     names.each do |name|
       define_method(name) { instance_variable_get("@#{name}") }
@@ -12,6 +13,7 @@ module Attrs
     end
   end
 
+  # Build a reader and a type-checking writer for one attribute.
   def attr_typed(name, type)
     define_method(name) { instance_variable_get("@#{name}") }
     define_method("#{name}=") do |value|
@@ -20,6 +22,7 @@ module Attrs
     end
   end
 
+  # Build a reader that computes its value once and then reuses it.
   def attr_memoized(name, &block)
     define_method(name) do
       ivar = "@#{name}"
@@ -32,6 +35,7 @@ module Attrs
 end
 
 class Class
+  # Make the attribute macros available in every class definition.
   include Attrs
 end
 

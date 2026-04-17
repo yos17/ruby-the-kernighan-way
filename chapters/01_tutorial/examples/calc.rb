@@ -5,6 +5,7 @@
 #   ruby calc.rb 10 / 0    # => Cannot divide by zero
 #   ruby calc.rb 10 % 5    # => Unknown operator: %
 
+# Apply the chosen operator and return either the numeric result or an error message.
 def calculate(a, op, b)
   case op
   when "+" then a + b

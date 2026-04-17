@@ -12,29 +12,35 @@ class AddressBook
 
   STORE = File.join(__dir__, "addr.json")
 
+  # Load any saved people so the address book persists across runs.
   def initialize
     @people = load
   end
 
+  # Append one person, save the file, and return the person that was added.
   def add(person)
     @people << person
     save
     person
   end
 
+  # Return every person whose name contains the query string.
   def find(query)
     @people.select { |p| p.name.downcase.include?(query.downcase) }
   end
 
+  # Let Enumerable methods walk through the saved people.
   def each(&block) = @people.each(&block)
 
   private
 
+  # Read the JSON file and turn each hash back into a Person value object.
   def load
     return [] unless File.exist?(STORE)
     JSON.parse(File.read(STORE)).map { |h| Person.new(name: h["name"], email: h["email"]) }
   end
 
+  # Write the in-memory people back to disk as pretty JSON.
   def save
     File.write(STORE, JSON.pretty_generate(@people.map { |p| { name: p.name, email: p.email } }))
   end

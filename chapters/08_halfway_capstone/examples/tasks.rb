@@ -6,7 +6,10 @@ require "json"
 require "date"
 
 Task = Data.define(:id, :text, :due, :done) do
+  # Turn the task into a plain hash so it can be written as JSON.
   def to_h = { id: id, text: text, due: due, done: done }
+
+  # Tell the CLI whether this open task is already past its due date.
   def overdue? = due && !done && Date.parse(due) < Date.today
 end
 
@@ -15,11 +18,13 @@ class TaskStore
 
   class NotFound < StandardError; end
 
+  # Load all persisted tasks from disk when the store starts up.
   def initialize(path)
     @path = path
     @tasks = load
   end
 
+  # Create one new task, save it, and return it to the caller.
   def add(text, due: nil)
     next_id = (@tasks.map(&:id).max || 0) + 1
     task = Task.new(id: next_id, text: text, due: due, done: false)
@@ -28,10 +33,12 @@ class TaskStore
     task
   end
 
+  # Find one task by id or raise a domain-specific error.
   def find(id)
     @tasks.find { |t| t.id == id } or raise NotFound, "no task with id #{id}"
   end
 
+  # Replace one task with a completed copy, then save the updated list.
   def mark_done(id)
     task = find(id)
     idx = @tasks.index(task)
@@ -41,10 +48,12 @@ class TaskStore
     new_task
   end
 
+  # Let Enumerable methods work across the in-memory tasks.
   def each(&block) = @tasks.each(&block)
 
   private
 
+  # Read tasks from the JSON file, or start empty if the file is missing or broken.
   def load
     return [] unless File.exist?(@path)
     JSON.parse(File.read(@path), symbolize_names: true).map { |h| Task.new(**h) }
@@ -53,6 +62,7 @@ class TaskStore
     []
   end
 
+  # Persist the current tasks array back to disk.
   def save
     File.write(@path, JSON.pretty_generate(@tasks.map(&:to_h)))
   end
@@ -61,11 +71,13 @@ end
 class CLI
   COMMANDS = %i[add list done search stats export help]
 
+  # Keep the storage layer and the output target separate from command parsing.
   def initialize(store, out: $stdout)
     @store = store
     @out   = out
   end
 
+  # Dispatch the first CLI word to a command method and show friendly errors.
   def run(args)
     cmd = args.shift&.to_sym
     cmd = :help unless COMMANDS.include?(cmd)
@@ -75,6 +87,7 @@ class CLI
     exit 1
   end
 
+  # Add one task from the remaining CLI arguments.
   def add(args)
     text, due = parse_add_args(args)
     abort "usage: tasks add TEXT [--due YYYY-MM-DD]" unless text
@@ -82,6 +95,7 @@ class CLI
     @out.puts "added: ##{task.id} #{task.text}"
   end
 
+  # Print either open tasks or completed tasks, depending on the flag.
   def list(args)
     show_done = args.include?("--done")
     tasks = show_done ? @store.select(&:done) : @store.reject(&:done)
@@ -92,6 +106,7 @@ class CLI
     end
   end
 
+  # Mark one task as done by id.
   def done(args)
     id = args.shift&.to_i
     abort "usage: tasks done ID" unless id&.positive?
@@ -99,6 +114,7 @@ class CLI
     @out.puts "done: ##{task.id} #{task.text}"
   end
 
+  # Search task text with a simple case-insensitive substring match.
   def search(args)
     query = args.join(" ").downcase
     abort "usage: tasks search QUERY" if query.empty?
@@ -110,6 +126,7 @@ class CLI
     end
   end
 
+  # Print a small summary of open, done, and overdue tasks.
   def stats(_args)
     by_status = @store.group_by { |t| t.done ? :done : :open }
     overdue   = @store.count(&:overdue?)
@@ -118,6 +135,7 @@ class CLI
     @out.puts "overdue: #{overdue}"
   end
 
+  # Export the task list in either CSV or JSON form.
   def export(args)
     format = args.first || "csv"
     case format
@@ -135,6 +153,7 @@ class CLI
     end
   end
 
+  # Print the command reference for the CLI.
   def help(_args)
     @out.puts <<~HELP
       tasks — a personal task tracker
@@ -152,6 +171,7 @@ class CLI
 
   private
 
+  # Pull the optional --due flag out of the argument list and return [text, due].
   def parse_add_args(args)
     due = nil
     if (i = args.index("--due"))
@@ -164,6 +184,7 @@ class CLI
     [text, due]
   end
 
+  # Turn one task into the display string used by list and search.
   def format_task(t)
     box = t.done ? "[x]" : "[ ]"
     due = t.due ? " (due #{t.due}#{t.overdue? ? "!" : ""})" : ""

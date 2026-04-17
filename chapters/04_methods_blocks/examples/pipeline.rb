@@ -2,14 +2,17 @@
 # Usage: ruby pipeline.rb (demo)
 
 class Pipeline
+  # Store the callables in the order they should run.
   def initialize(*steps)
     @steps = steps
   end
 
+  # Feed the input through each step and return the final value.
   def call(input)
     @steps.reduce(input) { |value, step| step.call(value) }
   end
 
+  # Return a new pipeline with one extra step appended to the end.
   def then(step)
     Pipeline.new(*@steps, step)
   end

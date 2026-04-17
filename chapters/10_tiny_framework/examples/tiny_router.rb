@@ -7,10 +7,12 @@ require "stringio"
 class Router
   Route = Data.define(:method, :pattern, :param_names, :handler)
 
+  # Start with no routes registered.
   def initialize
     @routes = []
   end
 
+  # Define one instance method per HTTP verb so routes read like router.get("/path").
   %i[get post put patch delete].each do |verb|
     define_method(verb) do |path, &handler|
       param_names = path.scan(/:(\w+)/).flatten.map(&:to_sym)
@@ -20,6 +22,7 @@ class Router
     end
   end
 
+  # Match the incoming request and return a Rack response triple.
   def call(env)
     method = env["REQUEST_METHOD"]
     path   = env["PATH_INFO"]

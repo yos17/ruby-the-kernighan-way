@@ -2,19 +2,23 @@
 # Usage: ruby events.rb (demo)
 
 class EventBus
+  # Start with an empty listener list for every topic.
   def initialize
     @listeners = Hash.new { |h, k| h[k] = [] }
   end
 
+  # Register a handler block for one topic and return it for later removal.
   def on(topic, &handler)
     @listeners[topic] << handler
     handler
   end
 
+  # Remove one previously-registered handler from a topic.
   def off(topic, handler)
     @listeners[topic].delete(handler)
   end
 
+  # Call every handler for the topic with the supplied arguments.
   def emit(topic, *args, **kwargs)
     @listeners[topic].each { |h| h.call(*args, **kwargs) }
   end

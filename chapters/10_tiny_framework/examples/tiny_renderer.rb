@@ -4,11 +4,13 @@
 require "erb"
 
 class Renderer
+  # Remember where templates live and cache compiled ERB objects.
   def initialize(template_dir = ".")
     @template_dir = template_dir
     @cache = {}
   end
 
+  # Render one template after filling a binding with the supplied locals.
   def render(name, locals = {})
     template = @cache[name] ||= ERB.new(File.read(File.join(@template_dir, "#{name}.erb")))
     bind = binding

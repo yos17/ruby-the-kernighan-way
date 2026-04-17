@@ -2,14 +2,21 @@
 # Usage: ruby flex.rb (demo)
 
 class Flex
+  # Copy the starting data so this object owns its own hash.
   def initialize(data = {}) = @data = data.dup
 
+  # Return a shallow copy of the backing hash.
   def to_h = @data.dup
+
+  # Read one value using hash-style access.
   def [](key) = @data[key]
+
+  # Write one value using hash-style access.
   def []=(key, value)
     @data[key] = value
   end
 
+  # Turn method calls like config.host and config.port= into hash access.
   def method_missing(name, *args)
     name_str = name.to_s
     if name_str.end_with?("=")
@@ -21,6 +28,7 @@ class Flex
     end
   end
 
+  # Keep Ruby's introspection honest for the dynamic methods above.
   def respond_to_missing?(name, include_private = false)
     @data.key?(name) || name.to_s.end_with?("=") || super
   end
