@@ -6,6 +6,17 @@ You do not need to memorize every method below. Treat the early sections as a to
 
 Most non-trivial Ruby code is at heart string transformation, hash counting, and array iteration. The methods in this chapter appear in nearly every Ruby program you'll write.
 
+## New Ruby ideas you'll meet in this chapter
+
+- **String methods** — `downcase`, `upcase`, `strip`, `split`, `gsub`, `scan`. Each returns a new string (or array); originals stay unchanged.
+- **Regex (regular expression)** — a tiny pattern language for matching text. `/[a-z]+/` means "one or more lowercase letters in a row".
+- **Array** — ordered list of values: `[1, 2, 3]`. Index with `arr[0]`, grow with `<<`.
+- **Hash** — a map from keys to values: `{ name: "Yosia", age: 30 }`. Ruby's universal lookup table.
+- **`.tally`** — counts how many times each element appears in an array. `["a","b","a"].tally` → `{"a"=>2, "b"=>1}`.
+- **`.sort_by { |x| key }`** — sort by whatever the block returns. Sorting by `[-count, word]` means "highest count first, alphabetical for ties".
+- **`.filter_map`** — `map` + `compact` in one pass. Run the block, keep truthy results, drop `nil`s.
+- **`ljust(n)` / `rjust(n)`** — pad a string to `n` characters so columns in output line up neatly.
+
 ## The toolbelt starts with strings
 
 You've used strings; look closer.

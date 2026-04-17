@@ -12,6 +12,20 @@ By the end of this chapter, the app will have:
 - routes that read like the router you built last chapter
 - enough real Rails structure that Chapter 12 can add Hotwire, auth, jobs, and caching
 
+## New Rails ideas you'll meet in this chapter
+
+The Chapter 10 tiny framework grew a router, an ORM, and a renderer. Rails is the same three pieces, scaled up and given names.
+
+- **MVC** — Model (data + business rules), View (what the user sees), Controller (the traffic cop between them). Every request routes to a controller action, which loads models and renders a view.
+- **Active Record** — Rails's ORM. `class Post < ApplicationRecord` gives Post `find`, `where`, `create`, `destroy`, plus associations (`belongs_to`, `has_many`). Inherited behavior, same flavor as `tiny_orm.rb`.
+- **Migration** — a Ruby file describing a schema change (add a table, add a column). `bin/rails db:migrate` applies them in order.
+- **Resourceful routes** — `resources :posts` generates seven routes (index/show/new/create/edit/update/destroy). Same pattern the Chapter 10 router was heading toward.
+- **RESTful actions** — the seven standard controller methods that go with resourceful routes. Keeping to this shape makes apps readable across teams.
+- **Strong parameters (`params.expect`)** — a deliberate "allowlist" for which request fields can write to the database. Prevents mass-assignment holes.
+- **Generators (`bin/rails g scaffold`)** — create model + migration + controller + views in one command. Good for first draft; edit afterwards.
+- **Active Record validations** — declarative rules (`validates :title, presence: true`) that run before save. Invalid records don't persist.
+- **Association proxy** — `@post.comments` returns an Active Record Relation, not a plain array. You can chain `.where`, `.order` on it and it stays lazy until rendered.
+
 ## Start a real app
 
 Rails 8 requires Ruby 3.2+. You should have Ruby 3.4 from Chapter 0.

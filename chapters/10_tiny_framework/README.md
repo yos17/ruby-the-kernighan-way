@@ -14,6 +14,20 @@ Keep one terminal for the server and another for `curl`. This chapter is easiest
 
 This chapter is ambitious. Read it as a guided build, not as a list of facts to memorize.
 
+## New ideas you'll meet in this chapter
+
+The pieces here are the exact ones a real web framework is built from — just stripped down to the bone.
+
+- **HTTP in one paragraph** — a client sends a request (method + path + headers + body), a server sends back a response (status + headers + body). Everything else is details.
+- **Rack** — the Ruby convention that glues servers to frameworks. A Rack app is anything with `.call(env)` that returns `[status, headers, body]`. Rails, Sinatra, Hanami — all Rack apps.
+- **Rack `env` hash** — keys like `REQUEST_METHOD`, `PATH_INFO`, `QUERY_STRING`, `rack.input`. The server hands you this; you read what you need.
+- **Rack response triple** — `[200, { "Content-Type" => "text/html" }, ["body"]]`. The third element must be iterable so you can stream big responses.
+- **Middleware** — a Rack app that wraps another Rack app. Adds logging, auth, compression etc. by calling through to the inner app.
+- **Routing with regex named captures** — `/^\/users\/(?<id>[^\/]+)$/` matches `/users/42` and lets the handler read `m[:id]`. Same trick Sinatra uses.
+- **ERB templating** — `<%= expr %>` interpolates, `<% code %>` runs code without output. Rails views are just ERB.
+- **`binding` + `local_variable_set`** — a binding is a snapshot of scope; ERB renders against a binding, so locals you inject become available in the template.
+- **Baby Active Record** — in-memory records with dynamic finders like `User.find_by_name("Alice")`, built with `method_missing`. Same shape as the real Rails ORM.
+
 When you open `rails new` next chapter, the directories and files should stop looking magical. They should look familiar.
 
 ## Start with one request

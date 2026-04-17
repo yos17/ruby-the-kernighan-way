@@ -4,6 +4,18 @@ The first seven chapters taught separate moves. This chapter makes them work tog
 
 Almost nothing here is conceptually new. That is good news. A capstone should feel like familiar pieces clicking together, not a fresh pile of syntax.
 
+## Ideas you'll meet in this chapter
+
+Most of these are chapters 1–7 coming back in combination. A few new habits matter at this size.
+
+- **Separation of concerns** — `TaskStore` knows about the JSON file; `CLI` knows about ARGV and printing. Neither touches the other's world. Small apps can get away without this; medium apps fall apart without it.
+- **Namespaced errors (`TaskStore::NotFound`)** — putting a custom exception class inside the class that raises it keeps the name short at the call site (`rescue TaskStore::NotFound`).
+- **Immutable update** — since `Task` is defined with `Data.define`, you "change" a task by building a new one: `Task.new(**task.to_h.merge(done: true))`. You never mutate in place.
+- **`public_send`** — call a method by symbol but refuse to call private ones. Perfect for dispatching CLI commands — and safer than `send` when the name came from user input.
+- **Heredoc (`<<~HELP`)** — multi-line string that strips the common leading indentation. The cleanest way to ship a help message.
+- **Whitelist pattern (`COMMANDS = %i[...]`)** — declare which command symbols are valid up-front, so the CLI only ever dispatches to intended methods.
+- **Designing the CLI first** — sketch the command list (`tasks add`, `tasks list`, `tasks done ID`) before writing code. The spec drives the storage shape, not the other way around.
+
 ## What `tasks` does
 
 Read these commands as the program's spec:

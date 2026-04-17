@@ -4,6 +4,17 @@ You have been using methods and blocks since the first chapter. This chapter is 
 
 The point is not abstract functional programming. The point is that Ruby lets you pass behavior around as easily as data, and once you see that clearly, a lot of everyday code gets smaller.
 
+## New Ruby ideas you'll meet in this chapter
+
+- **Block** — a piece of code passed to a method, written with `do ... end` or `{ ... }`. The most common way to hand behavior around in Ruby.
+- **`yield`** — inside a method, calls the block the caller passed in. No block? `yield` raises.
+- **Proc vs lambda** — both wrap a block so you can store and pass it. Lambdas (`->(x) { ... }` or `lambda { ... }`) are stricter about arguments and handle `return` differently.
+- **Closure** — a proc/lambda that "remembers" the local variables from the scope it was created in. That's what makes `memoize` able to keep its own private cache.
+- **`.reduce(initial) { |acc, x| ... }`** — fold a collection down to one value by accumulating. Also called `inject`.
+- **Splat `*args` and double-splat `**kwargs`** — catch any number of positional or keyword arguments as an array / hash, and "spread" them back out with the same syntax.
+- **`Hash.new { |h, k| h[k] = [] }`** — a hash with a default-value block. Missing keys get (and store) a fresh array, so `hash[k] << v` always works.
+- **`&block` parameter** — captures the caller's block as a named `Proc` so the method can hold onto it or pass it elsewhere.
+
 ## Defining methods, properly
 
 The basic form:
