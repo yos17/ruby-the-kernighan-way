@@ -2,314 +2,11 @@
 
 The previous chapters stayed mostly inside Ruby. This chapter is about the places where programs touch the world and the world pushes back. Files are missing. JSON is malformed. Servers time out. Environment variables are unset. That is ordinary programming, not an edge case.
 
-The three programs set the pace: `logwatch.rb` reads a changing file, `config_loader.rb` layers defaults with outside input, and `tiny_http_client.rb` talks to a remote server without pretending the network is polite.
+Three programs. `logwatch.rb` tails a changing file and alerts on matches. `config_loader.rb` merges defaults with outside input. `tiny_http_client.rb` talks to a remote server without pretending the network is polite. Each one forces you to meet Ruby's file, error, and environment machinery the moment it's needed.
 
-## Reading files
+## First build: logwatch.rb
 
-You've used `File.foreach` and `File.read`. The full picture:
-
-```ruby
-File.read("notes.txt")            # whole file as one string
-File.readlines("notes.txt")       # array of lines (with \n)
-File.readlines("notes.txt", chomp: true)   # array of lines (without \n)
-File.foreach("notes.txt") { |line| puts line }   # streaming
-File.exist?("notes.txt")          # => true / false
-File.size("notes.txt")            # bytes
-File.mtime("notes.txt")           # Time of last modification
-```
-
-Use `foreach` for any file that might be large — it doesn't load the whole thing into memory.
-
-## Writing files
-
-```ruby
-File.write("out.txt", "first line\nsecond line\n")    # whole file
-File.write("out.txt", "appended\n", mode: "a")        # append
-
-# For multiple writes, open in a block:
-File.open("out.txt", "w") do |f|
-  f.puts "line 1"
-  f.puts "line 2"
-end
-# File auto-closes when the block exits (even on exception)
-```
-
-`File.open(path, mode) do |f| ... end` is the safe form — Ruby closes the file even if your block raises.
-
-The mode strings:
-
-- `"r"` — read (default)
-- `"w"` — write (truncates the file first)
-- `"a"` — append (creates if missing)
-- `"r+"` — read+write
-- `"wb"` / `"rb"` — binary mode (matters on Windows)
-
-## Paths
-
-Build paths portably. Don't hard-code `/`:
-
-```ruby
-File.join("data", "users", "yosia.json")
-# => "data/users/yosia.json"  on Unix
-# => "data\users\yosia.json"  on Windows
-
-File.basename("/tmp/foo.rb")      # => "foo.rb"
-File.dirname("/tmp/foo.rb")       # => "/tmp"
-File.extname("/tmp/foo.rb")       # => ".rb"
-
-__FILE__       # the current source file
-__dir__        # directory of the current source file
-```
-
-`File.join(__dir__, "data.json")` is the standard way to load a file *next to the script*, regardless of where the user runs it from.
-
-## Directories
-
-```ruby
-Dir.exist?("logs")
-Dir.mkdir("logs")           # one level
-FileUtils.mkdir_p("a/b/c")  # nested (require "fileutils")
-Dir.entries("logs")         # ["..", ".", "app.log", ...]
-Dir.children("logs")        # ["app.log", ...]      (no . / ..)
-Dir["logs/*.log"]           # glob: ["logs/app.log", "logs/db.log"]
-Dir["**/*.rb"]              # recursive: every .rb under the current dir
-```
-
-## JSON
-
-Ruby has a built-in JSON parser:
-
-```ruby
-require "json"
-
-# Parse
-data = JSON.parse('{"name": "Yosia", "age": 30}')
-# => {"name" => "Yosia", "age" => 30}
-
-# Symbol keys (often what you want)
-JSON.parse('{"name": "Yosia"}', symbolize_names: true)
-# => {name: "Yosia"}
-
-# Generate
-{ name: "Yosia", age: 30 }.to_json     # => '{"name":"Yosia","age":30}'
-JSON.pretty_generate({ name: "Yosia" }) # multi-line, indented
-```
-
-Use `symbolize_names: true` for config-shaped data. For data that round-trips through external systems (where the keys came from JSON), keeping string keys avoids surprises.
-
-## CSV
-
-You met CSV in Chapter 2. The full set:
-
-```ruby
-require "csv"
-
-# Read
-CSV.read("data.csv")                  # array of arrays
-CSV.read("data.csv", headers: true)   # array of CSV::Row (acts like a hash)
-
-# Stream (large files)
-CSV.foreach("data.csv", headers: true) do |row|
-  puts row["name"]
-end
-
-# Write
-CSV.open("out.csv", "w") do |csv|
-  csv << ["name", "age"]
-  csv << ["Yosia", 30]
-end
-
-# Generate as a string
-csv_str = CSV.generate do |csv|
-  csv << ["name", "age"]
-  csv << ["Yosia", 30]
-end
-```
-
-## Exceptions: begin / rescue / ensure
-
-Things go wrong. Code that handles them gracefully:
-
-```ruby
-begin
-  data = File.read(path)
-rescue Errno::ENOENT
-  puts "no such file: #{path}"
-  data = ""
-rescue Errno::EACCES
-  puts "permission denied"
-  data = ""
-end
-```
-
-Multiple `rescue` clauses match by class. The first match wins. Catch the *narrowest* exception class you can. `rescue` with no class catches `StandardError`, which is usually broader than you want.
-
-```ruby
-begin
-  risky_thing
-rescue StandardError => e
-  puts "failed: #{e.message}"
-  puts e.backtrace.first(5)
-end
-```
-
-`ensure` runs whether the begin block succeeds or raises — used for cleanup (close files, release locks, restore state):
-
-```ruby
-file = File.open("out.txt", "w")
-begin
-  file.write("hello")
-ensure
-  file.close
-end
-# But just use File.open with a block — same thing, less code.
-```
-
-`retry` re-runs the begin block. Combine with a counter to bound the attempts:
-
-```ruby
-attempts = 0
-begin
-  attempts += 1
-  flaky_network_call
-rescue Net::OpenTimeout
-  retry if attempts < 3
-  raise
-end
-```
-
-## raise — throwing exceptions
-
-```ruby
-raise "something went wrong"                   # raises RuntimeError
-raise ArgumentError, "name can't be empty"     # raises a specific class
-raise ArgumentError.new("name can't be empty") # same thing, more verbose
-```
-
-Define your own exception classes for things that callers might want to catch separately:
-
-```ruby
-class ConfigError < StandardError; end
-class MissingKey < ConfigError
-  def initialize(key) = super("missing required key: #{key}")
-end
-
-raise MissingKey.new(:api_token)
-```
-
-A small hierarchy lets callers `rescue ConfigError` to catch any config problem, or `rescue MissingKey` for just one kind. Keep it shallow — two levels is usually enough.
-
-## ENV — environment variables
-
-```ruby
-ENV["DATABASE_URL"]            # => "postgres://..." or nil
-ENV.fetch("DATABASE_URL")      # raises if missing
-ENV.fetch("PORT", "3000")      # default if missing
-ENV["DEBUG"] == "true"         # boolean from string
-```
-
-Use `ENV.fetch` — it tells you immediately if a required variable is missing, instead of `nil` propagating until something fails far away.
-
-## Net::HTTP
-
-Ruby's standard HTTP client. Verbose but always available, no gem required:
-
-```ruby
-require "net/http"
-require "uri"
-
-uri = URI("https://api.github.com/users/octocat")
-response = Net::HTTP.get_response(uri)
-puts response.code           # => "200"
-puts response.body[0..100]   # first 100 chars
-
-# JSON shorthand for GET
-require "json"
-data = JSON.parse(Net::HTTP.get(uri))
-puts data["name"]
-
-# POST with body and headers
-http = Net::HTTP.new(uri.host, uri.port)
-http.use_ssl = true
-req = Net::HTTP::Post.new(uri.path, "Content-Type" => "application/json")
-req.body = { name: "test" }.to_json
-res = http.request(req)
-```
-
-For real apps you'll usually reach for `httparty` or `faraday` (gems). For scripts and tools, `Net::HTTP` is enough.
-
-## binding.irb
-
-You met this in Ch 0 as part of "reading errors." Now use it for live debugging:
-
-```ruby
-def slope(p1, p2)
-  binding.irb       # execution stops here; you drop into a REPL
-  (p2.y - p1.y).to_f / (p2.x - p1.x)
-end
-```
-
-When the program runs and reaches `binding.irb`, you get a prompt where every local variable is visible. Type expressions; see results. `step`, `next`, `continue` (added by the built-in `debug` gem on Ruby 3.3+) move through the program one call at a time.
-
-This is the most underused feature in Ruby. Beats `puts` debugging in nearly every case.
-
-If you want the standard debugger without any extra gems, `require "debug"` and use `binding.break` (or `debugger`) instead. That gives you the dedicated debug console directly.
-
-## Pry
-
-`binding.irb` is the built-in way. Pry is the richer console many Rubyists still prefer.
-
-Install it:
-
-```bash
-gem install pry pry-doc pry-byebug
-```
-
-If you are working inside a Bundler app, put those in the `:development` group instead.
-
-Then drop a breakpoint into the code:
-
-```ruby
-require "pry"
-
-def slope(p1, p2)
-  binding.pry
-  (p2.y - p1.y).to_f / (p2.x - p1.x)
-end
-```
-
-When execution stops, you are in the real scope of the method, just as with `binding.irb`. The useful Pry commands are different:
-
-```text
-ls                    # list methods and variables in scope
-whereami              # show the current source around the breakpoint
-show-source slope     # show a method's source
-show-doc Array#map    # show documentation
-cd p1                 # move the Pry context into an object
-exit                  # leave Pry and continue the program
-```
-
-With `pry-byebug` installed, Pry also gets step-through commands:
-
-```text
-step
-next
-finish
-continue
-break 42
-```
-
-The split is simple:
-
-- use `binding.irb` or `binding.break` when you want the built-in path
-- use `binding.pry` when you want a better console for poking around objects, source, and docs
-- add `pry-byebug` when you want to stay in Pry and still step line by line
-
-Pry's strength is exploration. `cd`, `ls`, `show-source`, and `show-doc` make it feel less like a debugger and more like a live lab bench for the program in front of you.
-
-## logwatch.rb
-
-Tail a file and react to lines matching a pattern.
+Run this in one terminal. In another, append lines to the log file. Whenever a line matches your pattern, `logwatch` prints an alert.
 
 ```ruby
 # logwatch.rb — tail a file, alert when a pattern shows up
@@ -317,12 +14,13 @@ Tail a file and react to lines matching a pattern.
 
 require "set"
 
-pattern = Regexp.new(ARGV[0])
+pattern = Regexp.new(ARGV[0]) if ARGV[0]
 filename = ARGV[1]
 abort "usage: logwatch.rb PATTERN FILE" unless pattern && filename
 
 seen = Set.new
 loop do
+  break unless File.exist?(filename)
   File.foreach(filename).with_index do |line, i|
     next if seen.include?(i)
     seen << i
@@ -334,19 +32,82 @@ loop do
 end
 ```
 
-Run it in one terminal, then `echo "ERROR new failure" >> app.log` from another and watch the alert appear.
+Run it:
+
+```
+# terminal 1
+$ ruby logwatch.rb ERROR app.log
+
+# terminal 2
+$ echo "2026-04-17 INFO starting"   >> app.log
+$ echo "2026-04-17 ERROR db timeout" >> app.log
+$ echo "2026-04-17 INFO recovered"   >> app.log
+
+# terminal 1 prints:
+[ALERT line 2] 2026-04-17 ERROR db timeout
+```
+
+Four new things.
+
+### `File.foreach` and `File.exist?`
+
+```ruby
+File.exist?("app.log")           # => true/false
+File.foreach("app.log") { |l| puts l }
+```
+
+`File.foreach` reads the file one line at a time. It never loads the whole file into memory, so it handles log files of any size. Every iteration yields one line (including the trailing newline).
+
+`File.exist?(path)` answers yes/no. Useful before you try to read.
+
+### `Regexp.new` — compile a pattern at runtime
+
+```ruby
+pattern = Regexp.new(ARGV[0])
+pattern.match?("2026-04-17 ERROR db timeout")   # => true or false
+```
+
+`Regexp.new(str)` takes a string and turns it into a regex. You use this form when the pattern comes from input you don't control (a command-line argument, a config file). When you know the pattern at write-time, the literal form `/ERROR/` is cleaner.
+
+### `Set` — answer "have I seen this?" fast
+
+```ruby
+require "set"
+
+seen = Set.new
+seen << 1; seen << 2; seen << 1
+seen                 # => #<Set: {1, 2}>
+seen.include?(1)     # => true, in constant time
+```
+
+A `Set` is an array that (a) keeps no duplicates and (b) answers `include?` in constant time. `Array#include?` scans the whole array; `Set#include?` doesn't. `logwatch` uses a set to remember which line indexes it has already alerted on, so the same line never alerts twice as the loop revisits the file.
+
+### `loop do ... end` and `sleep`
+
+```ruby
+loop do
+  # ... do work ...
+  sleep 1
+end
+```
+
+`loop` is Ruby's infinite loop. You leave it by raising, returning, or `break`. The user stops `logwatch` with Ctrl+C.
+
+`sleep 1` pauses the process for one second. Polling every second is simple and good enough for a small log file. Production tools use `inotify` or `kqueue` to watch for changes without polling — that's a Chapter-13-sized topic, not a Ch-7 one.
 
 (File: `examples/logwatch.rb`. Test with `examples/app.log`.)
 
-## config_loader.rb
+## Second build: config_loader.rb
 
-A layered config: defaults overridden by a JSON file overridden by environment variables.
+Every real program reads configuration from somewhere. The standard pattern is to layer: sensible defaults, then a config file (JSON here), then environment variables for the final overrides. ENV always wins — you want the sysadmin to be able to override *anything* without editing files.
 
 ```ruby
 # config_loader.rb — layered config (defaults < json < env)
 # Usage: ruby config_loader.rb [config.json]
 
 require "json"
+
+class ConfigError < StandardError; end
 
 class Config
   DEFAULTS = {
@@ -383,8 +144,6 @@ class Config
   def to_s   = @data.map { |k, v| "  #{k}: #{v}" }.join("\n")
 end
 
-class ConfigError < StandardError; end
-
 if __FILE__ == $PROGRAM_NAME
   config = Config.load(ARGV[0])
   puts "config:"
@@ -392,17 +151,7 @@ if __FILE__ == $PROGRAM_NAME
 end
 ```
 
-What's new.
-
-`DEFAULTS = {...}.freeze` — the `freeze` makes the hash immutable. Anyone trying to mutate it gets a runtime error. Always freeze constants that hold mutable types (Hash, Array, String).
-
-`each_with_object({}) do |key, h| ... end` — accumulate into the hash `h`, returning it.
-
-`rescue JSON::ParserError => e` catches just that one error class, lets others propagate.
-
-The class is layered — defaults < JSON < ENV. ENV always wins. This is the standard 12-Factor pattern.
-
-Test:
+Run it:
 
 ```
 $ ruby config_loader.rb
@@ -420,15 +169,78 @@ config:
   database_url: sqlite::memory:
 ```
 
-(File: `examples/config_loader.rb`.)
+Five new things.
 
-## tiny_http_client.rb
+### JSON
 
-A small HTTP client for JSON APIs.
+```ruby
+require "json"
+
+JSON.parse('{"name":"Yosia"}')                        # => {"name"=>"Yosia"}
+JSON.parse('{"name":"Yosia"}', symbolize_names: true) # => {name: "Yosia"}
+{name: "Yosia"}.to_json                               # => '{"name":"Yosia"}'
+JSON.pretty_generate({name: "Yosia"})                 # multi-line, indented
+```
+
+`JSON.parse` turns a JSON string into a Ruby hash. By default the keys are strings, because JSON only has strings. `symbolize_names: true` converts them to symbols — which is what you almost always want when the JSON represents config you control. Leave string keys when the JSON came from an external system whose shape you don't own.
+
+### `.freeze` and `.dup`
+
+```ruby
+DEFAULTS = { host: "localhost", port: 8080 }.freeze
+DEFAULTS[:port] = 9000     # raises FrozenError — hash is frozen
+
+copy = DEFAULTS.dup        # shallow copy — copy is NOT frozen
+copy[:port] = 9000         # works
+```
+
+Constants aren't automatically frozen in Ruby. `NAMES = ["Alice"]` can still be mutated — `NAMES << "Bob"` works and silently shares state across the program. Freeze the value to prevent that: `["Alice"].freeze`. Any attempt to mutate a frozen object raises `FrozenError`.
+
+`.dup` makes a shallow copy. When you need a working version of something frozen, dup it first.
+
+### `begin / rescue / raise`
+
+```ruby
+def self.load_file(path)
+  JSON.parse(File.read(path), symbolize_names: true)
+rescue JSON::ParserError => e
+  raise ConfigError, "invalid JSON in #{path}: #{e.message}"
+end
+```
+
+Methods get an implicit `begin` around their body, so you can write `rescue` at the method level without an explicit `begin`. Here we catch a low-level `JSON::ParserError` and re-raise a domain-specific `ConfigError` with a clearer message. Callers of `Config.load` only need to know about `ConfigError`; they shouldn't care that it's really a JSON problem.
+
+`rescue X => e` catches class `X` and binds the exception object to `e`. You can read `e.message` or `e.backtrace` for details.
+
+### Custom exception classes
+
+```ruby
+class ConfigError < StandardError; end
+```
+
+Subclass `StandardError`. That's it. This one line buys you a type the caller can rescue specifically: `rescue ConfigError`. Never `rescue Exception` (it catches `SignalException` and `SystemExit`), and avoid bare `rescue` (it catches every bug you wanted to crash on). Pick a class.
+
+### `ENV`
+
+```ruby
+ENV["APP_PORT"]            # => "9000" or nil
+ENV.fetch("APP_PORT")      # => "9000" or raises KeyError
+ENV.fetch("APP_PORT", "8080")  # default if missing
+```
+
+`ENV` is a hash-like object wrapping the process environment. Values are always strings (so `ENV["PORT"].to_i` is common). Use `ENV.fetch` for required values — silent `nil`s from `ENV["X"]` propagate until something far away crashes. `config_loader` uses `ENV[...]` because missing is a valid "no override here" signal.
+
+`each_with_object({})` in `load_env` accumulates into a hash: the block runs once per key, with `h` as the (stable) target.
+
+(File: `examples/config_loader.rb`. Try it with a JSON file: `echo '{"port":7000}' > c.json && ruby config_loader.rb c.json`.)
+
+## Third build: tiny_http_client.rb
+
+A small HTTP client for JSON APIs. It retries transient network failures, raises a typed error for non-2xx responses, and parses the body on success.
 
 ```ruby
 # tiny_http_client.rb — minimal HTTP client for JSON APIs
-# Usage: ruby tiny_http_client.rb <url>
+# Usage: ruby tiny_http_client.rb [url]
 
 require "net/http"
 require "uri"
@@ -437,7 +249,11 @@ require "json"
 class HttpClient
   class HttpError < StandardError
     attr_reader :status
-    def initialize(status, message) = (@status = status; super(message))
+
+    def initialize(status, message)
+      @status = status
+      super(message)
+    end
   end
 
   def initialize(base_url) = @base_url = base_url
@@ -451,7 +267,7 @@ class HttpClient
 
   private
 
-  def with_retry(max: 3, &block)
+  def with_retry(max: 3)
     attempts = 0
     begin
       attempts += 1
@@ -475,27 +291,211 @@ if __FILE__ == $PROGRAM_NAME
     puts data.inspect[0..200]
   rescue HttpClient::HttpError => e
     puts "HTTP #{e.status}: #{e.message[0..100]}"
+  rescue SocketError => e
+    puts "network error: #{e.message}"
   end
 end
 ```
 
-What's new.
+Run it (needs a working network):
 
-`URI.join(base, path)` resolves a relative path against a base URL.
+```
+$ ruby tiny_http_client.rb
+{:login=>"octocat", :id=>583231, :node_id=>"MDQ6VXNlcjU4MzIzMQ==", ...
+```
 
-The custom `HttpError` class carries a `status` attribute. Callers can `rescue HttpError` and inspect the status.
+Four new things.
 
-`with_retry` wraps a block with bounded retry on transient network errors. The pattern (counter + bounded retry + final raise) is one to memorize.
+### `Net::HTTP` and `URI`
+
+```ruby
+require "net/http"
+require "uri"
+
+uri      = URI("https://api.github.com/users/octocat")
+response = Net::HTTP.get_response(uri)
+response.code           # => "200"        (string)
+response.body           # => '{"login":"octocat",...}'
+response.is_a?(Net::HTTPSuccess)   # => true
+```
+
+`URI(...)` parses a URL. `Net::HTTP.get_response(uri)` performs a GET and returns a response object. `Net::HTTPSuccess` is the parent class of all 2xx responses — checking `is_a?` is the idiomatic way to ask "did it work?"
+
+`URI.join(base, path)` resolves a relative path against a base URL, handling slashes the way the RFC wants.
+
+### A custom exception with state
+
+```ruby
+class HttpError < StandardError
+  attr_reader :status
+
+  def initialize(status, message)
+    @status = status
+    super(message)
+  end
+end
+```
+
+When the exception should carry extra data (a status code, a missing key, a row number), give it an `initialize`, stash the data in `@-variables`, and call `super(message)` so `e.message` still works. Callers can then `rescue HttpError => e; puts e.status`.
+
+### `retry`
+
+```ruby
+def with_retry(max: 3)
+  attempts = 0
+  begin
+    attempts += 1
+    yield
+  rescue Net::OpenTimeout, Errno::ECONNRESET => e
+    retry if attempts < max
+    raise
+  end
+end
+```
+
+Inside a rescue, `retry` jumps back to the top of the `begin` block. Combined with a counter (`attempts < max`) it becomes a bounded retry. If we exhaust the retries, plain `raise` re-throws the exception we just caught, unchanged.
+
+Rescue can name multiple exception classes separated by commas — here we retry on two specific transient errors, and let any other exception escape.
+
+### `yield`
+
+`with_retry` doesn't accept the block with an explicit `&block` parameter. It just calls `yield`, which runs whatever block the caller passed. You saw this in Chapter 4; this is a useful second example. Ruby's block-passing is invisible by default — every method implicitly accepts a block, and `yield` runs it.
 
 (File: `examples/tiny_http_client.rb`. Requires network access to test.)
 
+## More tools you'll need
+
+The three programs introduced the core. The rest comes up often enough to know by name.
+
+### File — the full picture
+
+```ruby
+File.read("notes.txt")                          # whole file as one string
+File.readlines("notes.txt")                     # array of lines (with \n)
+File.readlines("notes.txt", chomp: true)        # array of lines (without \n)
+File.foreach("notes.txt") { |line| puts line }  # streaming (memory-safe)
+File.size("notes.txt")                          # bytes
+File.mtime("notes.txt")                         # Time of last modification
+```
+
+Pick `foreach` for large files, `read` for small ones, `readlines` when you actually want an array.
+
+```ruby
+File.write("out.txt", "first\nsecond\n")    # whole file (truncates)
+File.write("out.txt", "more\n", mode: "a")  # append
+
+File.open("out.txt", "w") do |f|
+  f.puts "line 1"
+  f.puts "line 2"
+end   # auto-closes when the block exits, even on exception
+```
+
+Use the block form for multi-write operations — without it, a crash mid-write leaks the file handle. Mode strings: `"r"` read, `"w"` write (truncates), `"a"` append, `"r+"` read+write, `"wb"`/`"rb"` binary on Windows.
+
+### Paths that work everywhere
+
+```ruby
+File.join("data", "users", "yosia.json")
+# => "data/users/yosia.json"  on Unix
+# => "data\users\yosia.json"  on Windows
+
+__FILE__       # path to the current source file
+__dir__        # directory of the current source file
+File.basename("/tmp/foo.rb")    # => "foo.rb"
+File.extname("/tmp/foo.rb")     # => ".rb"
+```
+
+`File.join(__dir__, "data.json")` is the standard way to load a file next to the script regardless of where the user runs it from.
+
+### Directories and globs
+
+```ruby
+Dir.exist?("logs")
+Dir.mkdir("logs")              # one level
+FileUtils.mkdir_p("a/b/c")     # nested (require "fileutils")
+Dir.children("logs")           # ["app.log", ...] (no . / ..)
+Dir["logs/*.log"]              # glob
+Dir["**/*.rb"]                 # recursive glob
+```
+
+`Dir["pattern"]` is how Chapter 5's `plugins.rb` found every plugin file. Same pattern appears in Rails initializers, test suites, and Rack middleware stacks.
+
+### CSV
+
+```ruby
+require "csv"
+
+CSV.read("data.csv", headers: true)              # array of rows
+CSV.foreach("data.csv", headers: true) do |row|  # streaming
+  puts row["name"]
+end
+
+CSV.open("out.csv", "w") do |csv|
+  csv << ["name", "age"]
+  csv << ["Yosia", 30]
+end
+```
+
+`read` for small files, `foreach` for big ones — same rule as `File`.
+
+### `ensure` — always runs
+
+```ruby
+file = File.open("out.txt", "w")
+begin
+  file.write("hello")
+ensure
+  file.close
+end
+```
+
+`ensure` runs whether the `begin` block succeeded, raised, or used `return`. It's for cleanup you must do no matter what. Most of the time the block form of `File.open` replaces it — cleaner, same guarantee.
+
+### `raise` — three forms
+
+```ruby
+raise "something went wrong"                    # raises RuntimeError
+raise ArgumentError, "name can't be empty"      # specific class
+raise ArgumentError.new("name can't be empty")  # same thing, more verbose
+```
+
+Make your own hierarchy when there are multiple related errors:
+
+```ruby
+class AppError < StandardError; end
+class NotFound < AppError; end
+class Unauthorized < AppError; end
+```
+
+Callers can `rescue AppError` to catch anything, or `rescue NotFound` for the one case. Keep the tree shallow — two levels is usually enough.
+
+### Debugging: `binding.irb` and Pry
+
+Chapter 3 introduced live debugging. The same trick handles network and file code perfectly.
+
+```ruby
+def fetch_user(id)
+  response = Net::HTTP.get_response(URI("..."))
+  binding.irb           # drop into a REPL with `response` live
+  JSON.parse(response.body)
+end
+```
+
+Inside the REPL you can inspect `response`, try `response.body[0..100]`, retype the JSON.parse call with variations, and then `exit` to continue. This is much faster than `puts` debugging for network code — production APIs return surprising shapes and one live look beats ten printlns.
+
+For a richer console with `ls`, `whereami`, `show-source`, and `show-doc`, `require "pry"` and use `binding.pry`. Add `pry-byebug` if you also want `step`/`next`/`finish`/`continue` in Pry. Pick one:
+
+- `binding.irb` — built-in, zero setup.
+- `binding.pry` — richer console, great for exploration.
+- `require "debug"` + `binding.break` — the dedicated debugger.
+
 ## Common pitfalls
 
-- **Bare `rescue` catches too much.** `rescue` with no class catches `StandardError`, which includes `ArgumentError`, `TypeError`, `NoMethodError` — bugs you wanted to crash on. Always name the class: `rescue Errno::ENOENT`, `rescue JSON::ParserError`. If you really do want everything, write `rescue StandardError => e` so the intent is on the page.
-- **`ENV["FOO"]` returns `nil` silently.** Forget to set the variable and `nil` propagates until something far away blows up with `undefined method on NilClass`. Use `ENV.fetch("FOO")` (raises immediately) or `ENV.fetch("FOO", "default")` (explicit fallback). Never `ENV["FOO"]` for required values.
-- **Not closing files.** `File.open(path, "w")` without a block leaves the file open until garbage collection — file handles leak, on Windows the file stays locked. Use the block form: `File.open(path, "w") { |f| f.puts(...) }`. Ruby closes it for you, even on exception.
-- **String keys when you wanted symbols.** `JSON.parse('{"a": 1}')` returns `{"a" => 1}`. Calling `data[:a]` returns `nil`. Pass `symbolize_names: true` when the keys are config-shaped and you control the JSON. Leave string keys when the JSON came from an external system you do not control.
-- **Assuming network calls succeed.** `Net::HTTP.get` raises on DNS failure, `Net::OpenTimeout` on slow connect, `Errno::ECONNRESET` on a dropped connection, and returns 5xx responses as success objects. Wrap any network call in `with_retry` (counter + bounded retry + final `raise`) and check `response.is_a?(Net::HTTPSuccess)` before parsing the body.
+- **Bare `rescue` catches too much.** `rescue` with no class catches `StandardError`, which includes `ArgumentError`, `TypeError`, `NoMethodError` — bugs you wanted to crash on. Always name the class: `rescue Errno::ENOENT`, `rescue JSON::ParserError`. If you really want everything, write `rescue StandardError => e` so the intent is visible.
+- **`ENV["FOO"]` returns `nil` silently.** Forget to set the variable and the `nil` propagates until something far away blows up with `undefined method on NilClass`. Use `ENV.fetch("FOO")` (raises immediately) or `ENV.fetch("FOO", "default")` (explicit fallback). Never `ENV["FOO"]` for required values.
+- **Not closing files.** `File.open(path, "w")` without a block leaves the file open until garbage collection — file handles leak, on Windows the file stays locked. Use the block form every time.
+- **String keys when you wanted symbols.** `JSON.parse('{"a":1}')` returns `{"a"=>1}`. Calling `data[:a]` returns `nil`. Pass `symbolize_names: true` for config-shaped JSON. Leave string keys when the shape comes from outside.
+- **Assuming network calls succeed.** `Net::HTTP.get` raises on DNS failure, `Net::OpenTimeout` on slow connect, `Errno::ECONNRESET` on drop, and returns 5xx as plain response objects. Wrap network calls in a bounded retry and check `response.is_a?(Net::HTTPSuccess)` before parsing the body.
 
 ## What you learned
 
@@ -503,25 +503,26 @@ The custom `HttpError` class carries a `status` attribute. Callers can `rescue H
 |---|---|
 | `File.read` / `foreach` / `readlines` | three ways to read |
 | `File.write` / `File.open(p, "w") do \|f\|` | write, with safe close |
-| `File.join`, `__dir__` | portable paths |
+| `File.join` / `__dir__` / `__FILE__` | portable paths |
 | `Dir["pattern"]` | glob files |
 | `JSON.parse(s, symbolize_names: true)` | parse JSON to symbol-keyed hash |
 | `JSON.pretty_generate(h)` | multi-line JSON output |
 | `CSV.foreach(file, headers: true)` | streaming CSV with column names |
 | `begin / rescue / ensure / retry` | exception handling |
-| `raise Class, "msg"` / `raise Class.new(...)` | throw an exception |
-| custom exception classes | so callers can catch them by type |
-| `ENV.fetch(name)` / `ENV.fetch(name, default)` | env vars, with required-or-default semantics |
+| `raise Class, "msg"` | throw an exception |
+| custom exception classes | so callers can catch by type |
+| `ENV.fetch(name)` / `ENV.fetch(name, default)` | required-or-default |
 | `Net::HTTP.get_response(uri)` | minimal HTTP GET |
-| `binding.irb` | interactive REPL at any point in your code |
-| `binding.pry` + `pry-byebug` | richer console plus step-through debugging |
+| `response.is_a?(Net::HTTPSuccess)` | the way to test for 2xx |
+| `.freeze` | prevent mutation of constants |
+| `Set` | fast "have I seen this?" |
+| `binding.irb` / `binding.pry` | interactive debugging, anywhere |
 
 ## Going deeper
 
-- Read the `IO` and `StringIO` docs at `https://docs.ruby-lang.org/en/master/IO.html` and `https://docs.ruby-lang.org/en/master/StringIO.html`. `File` is just an `IO` with a path; `StringIO` is an in-memory `IO` you can hand to anything that wants a file. Tests get easier once you see this.
-- Read `OpenStruct` (`require "ostruct"`). It is the standard library's `Flex` from this chapter. Compare its source to yours. Notice what production-grade `method_missing` looks like.
-- Read the Pry README: `https://github.com/pry/pry`. Then read the `ruby/debug` README: `https://github.com/ruby/debug`. They represent the two Ruby debugging styles worth knowing: rich live console and dedicated debugger.
-- Read the source of `dotenv` (the gem): one short file that does what Ch 7's exercise 6 asks. Then read `httparty`: a thin layer over `Net::HTTP` that adds the conveniences this chapter's `HttpClient` skips. Reading small gems is the fastest way to graduate from "I write scripts" to "I ship libraries."
+- Read the `IO` and `StringIO` docs at `https://docs.ruby-lang.org/en/master/IO.html` and `.../StringIO.html`. `File` is an `IO` with a path; `StringIO` is an in-memory `IO` you can hand to anything that expects a file. Tests get easier once you see this.
+- Read `OpenStruct` (`require "ostruct"`) — the standard library's version of Chapter 6's `Flex`. Compare its source to yours. That's what production-grade `method_missing` looks like.
+- Read the source of the `dotenv` gem: one short file that does what Exercise 6 asks. Then read `httparty`: a thin layer over `Net::HTTP` that adds the conveniences this chapter's `HttpClient` skips. Reading small gems is the fastest way to graduate from "I write scripts" to "I ship libraries."
 
 ## Exercises
 
