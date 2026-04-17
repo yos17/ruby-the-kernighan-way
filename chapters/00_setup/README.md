@@ -186,6 +186,7 @@ When stuck, copy the first line of the error into a search engine. Almost any Ru
 ## Going deeper
 
 - Read the `irb` documentation at `https://docs.ruby-lang.org/en/master/IRB.html`. Open `irb`, type `2 + 2`, then `"hello".upcase`, then `puts "hi"`. Notice that `irb` shows the return value (`=> 4`) *and* anything `puts` printed. That distinction matters in Ch 1.
+- If you like a richer console, install Pry: `gem install pry pry-doc pry-byebug`. Then run `pry` and try `ls`, `whereami`, and `show-source String#upcase`. Chapter 7 shows how to drop `binding.pry` into real programs and step through them.
 - Challenge: write a one-liner using `ruby -e` (the `-e` flag runs Ruby code from the command line without a file). Goal: print today's date. Run `ruby -e 'puts Time.now'` and read what it prints. No file needed.
 - Read the source of one tiny published Ruby program: `https://github.com/ruby/ruby/blob/master/sample/fact.rb`. It is forty lines. You won't understand all of it. Skim it anyway and notice how short real Ruby programs can be.
 

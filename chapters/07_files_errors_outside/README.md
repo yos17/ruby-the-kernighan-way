@@ -253,6 +253,60 @@ When the program runs and reaches `binding.irb`, you get a prompt where every lo
 
 This is the most underused feature in Ruby. Beats `puts` debugging in nearly every case.
 
+If you want the standard debugger without any extra gems, `require "debug"` and use `binding.break` (or `debugger`) instead. That gives you the dedicated debug console directly.
+
+## Pry
+
+`binding.irb` is the built-in way. Pry is the richer console many Rubyists still prefer.
+
+Install it:
+
+```bash
+gem install pry pry-doc pry-byebug
+```
+
+If you are working inside a Bundler app, put those in the `:development` group instead.
+
+Then drop a breakpoint into the code:
+
+```ruby
+require "pry"
+
+def slope(p1, p2)
+  binding.pry
+  (p2.y - p1.y).to_f / (p2.x - p1.x)
+end
+```
+
+When execution stops, you are in the real scope of the method, just as with `binding.irb`. The useful Pry commands are different:
+
+```text
+ls                    # list methods and variables in scope
+whereami              # show the current source around the breakpoint
+show-source slope     # show a method's source
+show-doc Array#map    # show documentation
+cd p1                 # move the Pry context into an object
+exit                  # leave Pry and continue the program
+```
+
+With `pry-byebug` installed, Pry also gets step-through commands:
+
+```text
+step
+next
+finish
+continue
+break 42
+```
+
+The split is simple:
+
+- use `binding.irb` or `binding.break` when you want the built-in path
+- use `binding.pry` when you want a better console for poking around objects, source, and docs
+- add `pry-byebug` when you want to stay in Pry and still step line by line
+
+Pry's strength is exploration. `cd`, `ls`, `show-source`, and `show-doc` make it feel less like a debugger and more like a live lab bench for the program in front of you.
+
 ## logwatch.rb
 
 Tail a file and react to lines matching a pattern.
@@ -460,11 +514,13 @@ The custom `HttpError` class carries a `status` attribute. Callers can `rescue H
 | `ENV.fetch(name)` / `ENV.fetch(name, default)` | env vars, with required-or-default semantics |
 | `Net::HTTP.get_response(uri)` | minimal HTTP GET |
 | `binding.irb` | interactive REPL at any point in your code |
+| `binding.pry` + `pry-byebug` | richer console plus step-through debugging |
 
 ## Going deeper
 
 - Read the `IO` and `StringIO` docs at `https://docs.ruby-lang.org/en/master/IO.html` and `https://docs.ruby-lang.org/en/master/StringIO.html`. `File` is just an `IO` with a path; `StringIO` is an in-memory `IO` you can hand to anything that wants a file. Tests get easier once you see this.
 - Read `OpenStruct` (`require "ostruct"`). It is the standard library's `Flex` from this chapter. Compare its source to yours. Notice what production-grade `method_missing` looks like.
+- Read the Pry README: `https://github.com/pry/pry`. Then read the `ruby/debug` README: `https://github.com/ruby/debug`. They represent the two Ruby debugging styles worth knowing: rich live console and dedicated debugger.
 - Read the source of `dotenv` (the gem): one short file that does what Ch 7's exercise 6 asks. Then read `httparty`: a thin layer over `Net::HTTP` that adds the conveniences this chapter's `HttpClient` skips. Reading small gems is the fastest way to graduate from "I write scripts" to "I ship libraries."
 
 ## Exercises
