@@ -2,7 +2,7 @@
 
 This book teaches Ruby the way K&R teaches C: by building small tools that do real work. You start with `hello.rb` and a calculator. You end with a tiny Rails-like framework, a published gem, and a deployed Rails app.
 
-It is written for a reader who is comfortable using a computer and new to programming. It is not a reference manual and it is not a Rails cookbook. It is a sequence of programs. If you already write Ruby comfortably, the preserved draft in [`archive/`](./archive/) is likely the better reference.
+It is written for a reader who is comfortable using a computer and new to programming. It is not a reference manual and it is not a Rails cookbook. It is a guided sequence of programs. If a chapter feels heavy, stay with the program first and come back for the supporting details on a second pass. If you already write Ruby comfortably, the preserved draft in [`archive/`](./archive/) is likely the better reference.
 
 ## Why This Shape
 
@@ -40,7 +40,7 @@ When a chapter feels dense, use this order:
 3. trace one tiny example by hand
 4. only then focus on the Ruby feature itself
 
-That order matters.
+Beginners usually do better when they keep the concrete program in view and let the abstraction catch up a little later.
 
 Beginners often get lost when they try to understand every abstraction immediately. You do not need to understand every line on the first pass. You need to understand what problem the code is solving.
 

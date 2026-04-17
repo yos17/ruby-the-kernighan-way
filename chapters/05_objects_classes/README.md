@@ -1,8 +1,10 @@
 # Chapter 5 — Objects, Classes, Modules
 
-The previous chapters mostly pushed data through methods. This chapter is where the data starts living inside objects. The three programs matter more than the terminology: an address book, an animal shelter, and a plugin loader. Each one answers the same question in a different way: what should one object remember, what behavior should be shared, and what behavior should be inherited?
+The previous chapters mostly pushed data through methods. This chapter is where the data starts living inside objects. Objects are not a different universe. They are just a way to keep data and the methods that belong to that data together.
 
-Read the chapter in that order. First look at the object each program is built around. Then look at what that object needs to remember. Only after that worry about `attr_accessor`, `include`, or `super`.
+The three programs matter more than the terminology: an address book, an animal shelter, and a plugin loader. Each one answers the same question in a different way: what should one object remember, what behavior should be shared, and what behavior should be inherited?
+
+Read the chapter in that order. First look at the object each program is built around. Then look at what that object needs to remember. Only after that worry about `attr_accessor`, `include`, or `super`. If the vocabulary starts stacking up, return to the programs. The programs carry the chapter.
 
 ## Defining a class
 
@@ -50,7 +52,7 @@ class Person
 
   def initialize(name)
     @name = name
-    @id   = SecureRandom.hex(4)
+    @id   = name.downcase
   end
 end
 ```

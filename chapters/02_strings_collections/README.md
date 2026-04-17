@@ -2,7 +2,7 @@
 
 Chapter 1 handled one input at a time. This chapter is where the data gets wider: a whole file of colors, a whole CSV of sales, a whole page of text. The three programs are a `histogram`, a `csv_stats` summarizer, and a `wordfreq` counter.
 
-The early sections are a toolbelt, not a reference manual. Read them with the three programs in mind. Which methods help break text apart? Which ones count? Which ones turn a pile of rows into one answer? That is the thread of the chapter.
+You do not need to memorize every method below. Treat the early sections as a toolbelt, not a reference manual. Read them with the three programs in mind. Which methods help break text apart? Which ones count? Which ones turn a pile of rows into one answer? That is the thread of the chapter.
 
 Most non-trivial Ruby code is at heart string transformation, hash counting, and array iteration. The methods in this chapter appear in nearly every Ruby program you'll write.
 

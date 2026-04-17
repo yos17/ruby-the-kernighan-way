@@ -2,7 +2,7 @@
 
 You built the small version in Chapter 10. Now build the real one. This chapter starts a blog application with posts, comments, authors, and full CRUD. The point is not to admire Rails from a distance. The point is to watch the familiar pieces reappear in their production form.
 
-Because Rails generates a lot of files, this chapter is a guided walkthrough. Do not try to read every file Rails creates. Follow the ones that move the app forward.
+If Rails feels big here, that is normal. Because Rails generates a lot of files, this chapter is a guided walkthrough. You do not need to read every file Rails creates. Follow the ones that move the app forward.
 
 By the end of this chapter, the app will have:
 
@@ -66,7 +66,7 @@ This is the same shape as your `tiny_framework` from Ch 10:
 | `Renderer.new(VIEWS_DIR)` | `ActionView` automatically rendering `.html.erb` files |
 | WEBrick adapter | the bundled Puma server |
 
-Rails adds a lot around the edges: migrations, validations, associations, eager loading, params, sessions, helpers, and a real database underneath it all. Do not try to hold every one of those abstractions in your head at once. This chapter only needs the pieces that move the blog forward.
+Rails adds a lot around the edges: migrations, validations, associations, eager loading, params, sessions, helpers, and a real database underneath it all. You do not need to hold every one of those abstractions in your head at once. Keep following the request path through routes, controller, model, and view. This chapter only needs the pieces that move the blog forward.
 
 ## Give the app its first real resource
 

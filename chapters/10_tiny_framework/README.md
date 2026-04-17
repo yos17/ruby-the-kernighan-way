@@ -12,6 +12,8 @@ By the end of the chapter you will have:
 
 Keep one terminal for the server and another for `curl`. This chapter is easiest to read when every new file can answer a real request a minute after you write it.
 
+This chapter is ambitious. Read it as a guided build, not as a list of facts to memorize.
+
 When you open `rails new` next chapter, the directories and files should stop looking magical. They should look familiar.
 
 ## Start with one request
@@ -34,7 +36,7 @@ Content-Length: 124
 <html><body>Post 42 says hi.</body></html>
 ```
 
-That is the whole game. Everything else in this chapter is just a cleaner way to organize that exchange.
+That is the core loop. Everything else in this chapter is a cleaner way to organize that exchange.
 
 ## Rack — the Ruby web protocol
 

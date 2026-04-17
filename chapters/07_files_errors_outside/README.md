@@ -142,7 +142,7 @@ rescue Errno::EACCES
 end
 ```
 
-Multiple `rescue` clauses match by class. The first match wins. Catch the *narrowest* exception class you can — `rescue` (with no class) catches `StandardError` and is usually a smell.
+Multiple `rescue` clauses match by class. The first match wins. Catch the *narrowest* exception class you can. `rescue` with no class catches `StandardError`, which is usually broader than you want.
 
 ```ruby
 begin

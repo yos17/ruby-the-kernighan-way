@@ -1,6 +1,6 @@
 # Chapter 9 — Building a Gem
 
-A gem is a Ruby library in a box: code, version, metadata, and a way for someone else to install it. By the end of this chapter you will have one published to RubyGems with your name on it.
+A gem is a Ruby library in a box: code, version, metadata, and a way for someone else to install it. The first time you publish one it can feel mysterious. Underneath, though, it is just a small Ruby project with a standard shape. By the end of this chapter you will have one published to RubyGems with your name on it.
 
 The chapter has two jobs. First, read one real gem so the shape is no longer mysterious. Then build one of your own and push it out.
 
@@ -45,7 +45,7 @@ What to look at, in order:
 
 4. **`lib/tty/prompt/version.rb`** — `module TTY; module Prompt; VERSION = "0.23.x"; end end`. Just the version constant. Pulled into the gemspec.
 
-5. **`lib/tty/prompt/`** subdirectory — each public method has its own file (`question.rb`, `list.rb`, `confirm.rb`). The `Prompt` class delegates to these. **Notice the size of each file — none over a few hundred lines.** This is the discipline good gems share: small files, one responsibility each.
+5. **`lib/tty/prompt/`** subdirectory — each public method has its own file (`question.rb`, `list.rb`, `confirm.rb`). The `Prompt` class delegates to these. **Notice the size of each file — none over a few hundred lines.** This is a pattern good gems share: small files, one responsibility each.
 
 6. **`spec/`** — the test suite. Open one or two spec files. See the `describe`/`it` structure (RSpec — Ch 12 covers it briefly).
 
@@ -176,7 +176,7 @@ A passing test suite is a precondition for shipping. **Don't release a gem witho
 - Bump PATCH for backward-compatible bug fixes
 - Bump MINOR for backward-compatible new features
 - Bump MAJOR for breaking changes
-- Pre-1.0 is the wild west — you can do what you want, but you signal "use at your own risk"
+- Before 1.0, people expect more change. Signal that clearly and keep releases small.
 
 For the first release, use `0.1.0`.
 
@@ -281,7 +281,7 @@ Conventions worth following:
 | Gem layout | `lib/`, gemspec, `bin/`, `test/` — small files, thin public API |
 | `bundle gem NAME` | scaffolds a complete gem skeleton |
 | The gemspec | `name`, `version`, `summary`, `files`, `required_ruby_version`, dependencies |
-| Versioning | semver: MAJOR.MINOR.PATCH; pre-1.0 is the wild west |
+| Versioning | semver: MAJOR.MINOR.PATCH; before 1.0, expect more change |
 | `gem build` / `gem install` / `gem push` | build, test locally, publish |
 | `bundle exec rake test` | run your tests |
 | Minitest basics | `class FooTest < Minitest::Test`, `def test_x`, `assert_equal` |

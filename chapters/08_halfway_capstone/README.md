@@ -2,7 +2,7 @@
 
 The first seven chapters taught separate moves. This chapter makes them work together. The result is `tasks`, a small command-line task tracker that reads and writes a JSON file, searches, filters, prints summaries, and stays small enough to understand in one sitting.
 
-Nothing here is conceptually new. That is the point. A good capstone proves that the earlier chapters were not isolated tricks. They were parts.
+Almost nothing here is conceptually new. That is good news. A capstone should feel like familiar pieces clicking together, not a fresh pile of syntax.
 
 ## What `tasks` does
 

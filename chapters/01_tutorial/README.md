@@ -1,6 +1,8 @@
 # Chapter 1 — A Tutorial Introduction
 
-This chapter introduces Ruby through three programs: a greeter that takes input from you, a calculator that does real arithmetic with command-line arguments, and a tiny file processor that counts lines. By the end you'll have variables, conditionals, methods, command-line arguments, and basic file I/O. The rest of the book goes deeper on each piece; this chapter establishes them all at once so you can read Ruby code without staring at unknown words.
+This chapter introduces Ruby through three programs: a greeter that takes input from you, a calculator that does real arithmetic with command-line arguments, and a tiny file processor that counts lines. By the end you'll have variables, conditionals, methods, command-line arguments, and basic file I/O.
+
+The goal is not to master every piece today. The goal is to get a first working picture, so later chapters feel familiar instead of foreign. Run every snippet as you go.
 
 ## hello.rb, expanded
 
@@ -31,7 +33,7 @@ You could write the same thing with concatenation:
 puts "Hello, " + name + "!"
 ```
 
-But interpolation is the Ruby way. Use it.
+But interpolation reads better and is the Ruby style you'll see most often.
 
 ### Asking for the name
 

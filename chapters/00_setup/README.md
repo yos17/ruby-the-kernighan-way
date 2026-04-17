@@ -1,6 +1,6 @@
 # Chapter 0 — Setup
 
-Before you write Ruby, you need three things on your computer: Ruby itself, a code editor, and a terminal. This chapter installs them and runs your first program. About thirty minutes if it all works the first time, longer if something breaks.
+Before you write Ruby, you need three things on your computer: Ruby itself, a code editor, and a terminal. This chapter installs them and runs your first program. Budget about thirty minutes if it all works on the first try. If it takes longer, that is still normal; setup is the least glamorous part of programming for everyone.
 
 ## Installing Ruby
 

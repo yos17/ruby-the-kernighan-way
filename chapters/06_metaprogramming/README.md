@@ -1,8 +1,8 @@
 # Chapter 6 — Metaprogramming
 
-Metaprogramming is where Ruby starts feeling like a language for building languages. That can be exhilarating or unreadable. This chapter keeps it on a short leash: one attribute generator, one flexible object, one routing DSL.
+Metaprogramming is where Ruby can feel magical for the first time. It can also get slippery fast. This chapter keeps it concrete: one attribute generator, one flexible object, one routing DSL.
 
-The reading rule here is simple. Do not treat any of these techniques as tricks to sprinkle everywhere. Read each one as an answer to a narrow problem: a family of methods, a family of attribute names, a family of route declarations.
+The reading rule here is simple. Do not treat any of these techniques as tricks to sprinkle everywhere. Read each one as an answer to a narrow problem: a family of methods, a family of attribute names, a family of route declarations. It is fine if the example makes sense before the mechanism does.
 
 ## Open classes
 
@@ -41,7 +41,7 @@ Secret.new.send(:shh)         # => "shhh"      (works — private bypassed)
 Secret.new.public_send(:shh)  # NoMethodError  (respects private)
 ```
 
-Use `public_send` by default. Reach for `send` only when you genuinely need to bypass privacy (rare — usually a smell).
+Use `public_send` by default. Reach for `send` only when you genuinely need to bypass privacy. That is rare, and often a sign that a simpler design would read better.
 
 ## define_method
 
@@ -131,7 +131,7 @@ h.role        # => "admin"
 h.respond_to?(:user)   # => true
 ```
 
-Two non-negotiable rules:
+Two rules worth being strict about:
 
 1. **Always call `super` for cases you don't handle.** Otherwise you silently swallow real `NoMethodError`s — typos become `nil` returns and bugs hide for months.
 2. **Always pair `method_missing` with `respond_to_missing?`.** Lots of Ruby code asks "do you respond to this?" before calling it. Without `respond_to_missing?`, your dynamic methods are invisible to introspection.

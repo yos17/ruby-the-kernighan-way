@@ -2,7 +2,7 @@
 
 This chapter is about decisions: which lines match, which values to keep, which path through the code should run next. The programs are a `grep` clone, an error counter, and a log summarizer. They all do the same two jobs over and over: choose and group.
 
-Professional Ruby code reaches for an Enumerable method first and a `while` loop almost never. Once you can name the right method (`group_by`, `partition`, `chunk_while`, `each_with_object`), most data-shaping problems collapse into one line. The control-flow forms in the first half of the chapter matter because they feed the programs in the second half, not because you need to memorize a taxonomy of loops.
+In day-to-day Ruby, Enumerable methods do most of the heavy lifting and plain `while` loops are comparatively rare. You do not need to memorize every method name at once. Learn a few, keep the program's input and output in view, and add more tools as you need them. The control-flow forms in the first half of the chapter matter because they feed the programs in the second half.
 
 ## if, unless, and the modifier forms
 
