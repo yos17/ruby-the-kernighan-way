@@ -76,11 +76,22 @@ A lot of Ruby becomes easier when you reduce it to *data going in, data changing
 
 ## Status
 
-Currently being rewritten from a 13-chapter draft (preserved in `archive/`) into the 14-chapter book described above. As of this commit:
+All 14 chapters written. The original 13-chapter draft is preserved in [`archive/`](./archive/) for reference. Chapters 11-13 are guided walkthroughs (you run `rails new`, generators, etc.) rather than committed apps; everything before is verified runnable Ruby.
 
-- **Ch 0 — Setup** ✅ written
-- **Ch 1 — A Tutorial Introduction** ✅ written
-- **Ch 2-13** ⏳ scaffolded but not yet written
+- **Ch 0 — Setup** ✅
+- **Ch 1 — A Tutorial Introduction** ✅
+- **Ch 2 — Strings, Numbers, Collections** ✅
+- **Ch 3 — Control Flow and Iteration** ✅
+- **Ch 4 — Methods, Blocks, Procedures** ✅
+- **Ch 5 — Objects, Classes, Modules** ✅
+- **Ch 6 — Metaprogramming** ✅
+- **Ch 7 — Files, Errors, the Outside World** ✅
+- **Ch 8 — Halfway Capstone: a Real CLI Tool** ✅
+- **Ch 9 — Building a Gem** ✅
+- **Ch 10 — A Tiny Web Framework** ✅
+- **Ch 11 — Real Rails: Models, Controllers, Views** ✅
+- **Ch 12 — Real Rails: Hotwire, Forms, Auth, Jobs, Caching** ✅
+- **Ch 13 — Shipping** ✅
 
 Design spec: [`docs/superpowers/specs/2026-04-16-ruby-rails-kernighan-curriculum-design.md`](./docs/superpowers/specs/2026-04-16-ruby-rails-kernighan-curriculum-design.md).
 
