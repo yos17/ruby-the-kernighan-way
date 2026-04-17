@@ -14,7 +14,7 @@ Keep one terminal for the server and another for `curl`. This chapter is easiest
 
 When you open `rails new` next chapter, the directories and files should stop looking magical. They should look familiar.
 
-## What's a web request, mechanically?
+## Start with one request
 
 A browser sends bytes that look like:
 
@@ -34,7 +34,7 @@ Content-Length: 124
 <html><body>Post 42 says hi.</body></html>
 ```
 
-That's it. Everything else is layers on top.
+That is the whole game. Everything else in this chapter is just a cleaner way to organize that exchange.
 
 ## Rack — the Ruby web protocol
 

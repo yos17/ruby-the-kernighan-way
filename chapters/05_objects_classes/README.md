@@ -606,7 +606,7 @@ This is the pattern Rails uses for *concerns*. It's the basis for almost every p
 
 (Files: `examples/plugins.rb`, `examples/plugins/greeter.rb`, `examples/plugins/counter.rb`.)
 
-## A peek at the object model
+## One quick look at method lookup
 
 Three things every Ruby object knows:
 
@@ -624,7 +624,7 @@ Yapper.ancestors
 # => [Yapper, Loud, Puppy, Dog, Object, Kernel, BasicObject]
 ```
 
-When you call `obj.foo`, Ruby walks the ancestors list left-to-right and runs the first `foo` it finds. Modules included with `include` insert into the chain just above the class. Modules `prepend`ed insert *just below*.
+When you call `obj.foo`, Ruby walks the ancestors list left-to-right and runs the first `foo` it finds. Modules added with `include` sit after the class in that chain. Modules added with `prepend` sit before the class, which is why they can wrap the class's own methods.
 
 This is how `super` knows what to call. This is how Comparable's methods reach your `<=>`. Chapter 6 uses this directly.
 

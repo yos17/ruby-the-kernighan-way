@@ -33,7 +33,7 @@ bin/rails server
 
 Visit `http://localhost:3000` — the Rails welcome page.
 
-## Open the box
+## Read the skeleton
 
 ```
 blog/
@@ -66,9 +66,9 @@ This is the same shape as your `tiny_framework` from Ch 10:
 | `Renderer.new(VIEWS_DIR)` | `ActionView` automatically rendering `.html.erb` files |
 | WEBrick adapter | the bundled Puma server |
 
-What Rails adds that yours doesn't: migrations, validations, associations, eager loading, request lifecycle (params/sessions/cookies/CSRF), forms, helpers, asset pipeline, the database. We'll meet most of those today.
+Rails adds a lot around the edges: migrations, validations, associations, eager loading, params, sessions, helpers, and a real database underneath it all. Do not try to hold every one of those abstractions in your head at once. This chapter only needs the pieces that move the blog forward.
 
-## Generating the Post resource
+## Give the app its first real resource
 
 Rails has *generators* — scripts that scaffold the boilerplate.
 
@@ -278,7 +278,7 @@ Post.published.recent.limit(5)
 
 Reads almost like English. Compose them.
 
-## Database design, briefly
+## A short database detour
 
 A few rules carry most of the weight.
 
@@ -392,7 +392,7 @@ end
 # => /posts/:post_id/comments, etc.
 ```
 
-## Rails conventions, and why they exist
+## Why the conventions matter
 
 Rails calls itself "convention over configuration." Concretely that means: if you name files the way Rails expects, you write zero glue code. If you don't, you write configuration to bridge the gap. The conventions:
 

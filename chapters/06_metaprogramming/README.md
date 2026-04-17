@@ -243,6 +243,8 @@ Refinements never leak. They're safer than monkey patching but harder to debug â
 
 Use refinements when you need a focused change for one library or one file. For everything else, prefer well-named methods on objects you own.
 
+Enough machinery. Build something with it.
+
 ## mini_attr.rb
 
 Build your own attr_* family: `attr_logged` (logs reads/writes), `attr_typed` (rejects values of the wrong type), `attr_memoized` (caches the first computed value).
