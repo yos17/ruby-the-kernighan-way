@@ -102,9 +102,15 @@ Run:
 ```
 $ ruby calc.rb 10 + 5
 15.0
+$ ruby calc.rb 10 - 5
+5.0
+$ ruby calc.rb 10 '*' 5
+50.0
 $ ruby calc.rb 10 / 4
 2.5
 ```
+
+Notice the quotes around `*`. The shell treats a bare `*` as "every filename in this directory" and expands it *before* Ruby runs, so `ruby calc.rb 10 * 5` would pass a list of filenames to your program instead of the word `*`. Quoting with `'*'` (or `"*"`, or `\*`) hands the character through unchanged. The other operators — `+`, `-`, `/` — have no special meaning to the shell, so they pass through as-is.
 
 A lot is going on.
 
@@ -272,7 +278,7 @@ The full file is in `examples/tiny_processor.rb`.
 - **Doing math on `gets` without converting.** `gets.chomp` returns a string. `gets.chomp + 1` raises `TypeError`. Use `gets.chomp.to_i` for integers, `.to_f` for floats.
 - **Confusing `gets` with `ARGV`.** `gets` reads from the keyboard while the program runs; `ARGV` holds words typed *after* the script name (`ruby calc.rb 10 + 5`). A program waiting at a `gets` prompt has not crashed — it wants you to type something and press Enter.
 - **`ARGV[0]` is always a string.** Even `ruby calc.rb 10` gives you `"10"`, not `10`. `"10" * 3` is `"101010"`, not `30`. Convert with `.to_i` or `.to_f` before doing math.
-- **Shell expands `*` before Ruby sees it.** `ruby calc.rb 10 * 5` may pass every filename in the directory as `ARGV[1]`. Quote it: `ruby calc.rb 10 '*' 5`. Same for `?` and `~`.
+- **Shell expands `*` before Ruby sees it.** `ruby calc.rb 10 * 5` passes every filename in the directory to your program instead of the word `*`. Quote it: `ruby calc.rb 10 '*' 5` (or `"*"`, or `\*`). Same trap with `?` and `~`.
 - **`puts` adds a newline; `print` does not.** Output that runs together on one line means you wanted `puts`. A prompt that pushes the user's input onto the next line means you wanted `print`.
 
 ## What you learned

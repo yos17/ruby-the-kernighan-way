@@ -1,9 +1,11 @@
 # calc.rb — a calculator that takes two numbers and an operator from ARGV
 # Usage: ruby calc.rb <a> <op> <b>
-#   ruby calc.rb 10 + 5    # => 15.0
-#   ruby calc.rb 10 / 4    # => 2.5
-#   ruby calc.rb 10 / 0    # => Cannot divide by zero
-#   ruby calc.rb 10 % 5    # => Unknown operator: %
+#   ruby calc.rb 10 + 5      # => 15.0
+#   ruby calc.rb 10 - 5      # => 5.0
+#   ruby calc.rb 10 '*' 5    # => 50.0   (quote * so the shell doesn't glob it)
+#   ruby calc.rb 10 / 4      # => 2.5
+#   ruby calc.rb 10 / 0      # => Cannot divide by zero
+#   ruby calc.rb 10 % 5      # => Unknown operator: %
 
 # Apply the chosen operator and return either the numeric result
 # or an error message. `case/when` is Ruby's multi-way branch — a
